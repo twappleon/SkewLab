@@ -189,6 +189,9 @@ func (l *Ledger) Evaluate(m polymarket.Market, s strategy.Result, now time.Time)
 	if !s.Ready || !m.Active || now.Add(65*time.Second).After(m.End) {
 		return messages
 	}
+	if !l.CanReserveNewStake(now) {
+		return messages
+	}
 	if l.todayLoss(now) <= -l.Config.MaxDailyLossUSD || l.entriesToday(now) >= l.Config.MaxDailyEntries {
 		return messages
 	}
