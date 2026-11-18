@@ -23,6 +23,7 @@ import (
 
 	"github.com/twappleon/SkewLab/internal/analytics"
 	"github.com/twappleon/SkewLab/internal/edge"
+	"github.com/twappleon/SkewLab/internal/experiment"
 	"github.com/twappleon/SkewLab/internal/fees"
 	"github.com/twappleon/SkewLab/internal/maker"
 	"github.com/twappleon/SkewLab/internal/notify"
@@ -50,6 +51,7 @@ type App struct {
 	clob                *stream.Feed
 	chainlink           *oracle.PolyBolt
 	edge                *edge.Recorder
+	comparison          *experiment.Recorder
 	queue               *maker.QueueMonitor
 	alerts              *notify.Client
 	lastSignalAt        time.Time
@@ -92,6 +94,7 @@ func NewApp(dir string, demo bool, minMomentum, minSkew float64, poll time.Durat
 	}
 	a := &App{api: polymarket.New(), clob: stream.NewFeed(), queue: maker.NewQueueMonitor(), ledger: l, demo: demo, markets: map[int]polymarket.Market{}, dataDir: dir, minMomentum: minMomentum, minSkew: minSkew, poll: poll, persistError: persistentFailure}
 	a.edge = edge.NewRecorder(dir)
+	a.comparison = experiment.New(dir)
 	a.chainlink = oracle.NewPolyBolt(oracle.CredentialsFromEnv(), func(t oracle.Tick) { a.saveChainlink(t) })
 	if !demo {
 		records, e := storage.ReadRecentJSONL[oracle.Tick](filepath.Join(dir, "chainlink-twap-60s.jsonl"), 7200)
@@ -207,6 +210,7 @@ func (a *App) cycle(ctx context.Context) {
 			a.markets[m.Seconds] = m
 			if m.Active {
 				if !a.demo {
+					if _,err := a.comparison.Capture(m,researchSignal,a.lastBTC,now);err!=nil{log.Printf("comparison candidate save failed: %v",err)}
 					if _,err := a.edge.Capture(m, researchSignal, now);err!=nil {
 						log.Printf("edge candidate persistence unavailable: %v",err)
 					}
@@ -552,7 +556,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
 		Telegram            notify.Status       `json:"telegram_notifications"`
-	}{mode(a.demo), "1.0.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
+	}{mode(a.demo), "1.1.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
 }
 // Read-only feeds, historical reconciliation and existing-position exits
 // continue while new live-data paper entries remain explicitly disabled.
@@ -631,13 +635,14 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 		Analytics         analytics.Summary          `json:"analytics"`
 		MarketWindows     []analytics.MarketWindow   `json:"market_windows"`
 		RootCauses        analytics.RootCauseSummary `json:"root_causes"`
+		StrategyComparison experiment.Summary `json:"strategy_comparison"`
 		PaperEntriesEnabled bool `json:"paper_entries_enabled"`
 		EntryPauseReason string `json:"entry_pause_reason,omitempty"`
 	}{
-		mode(a.demo), "1.0.0", now, a.lastBTC.Time, fresh,
+		mode(a.demo), "1.1.0", now, a.lastBTC.Time, fresh,
 		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
 		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, a.edge.Status(), a.edge.AssessQuality(now), analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
-		a.demo || paperEntriesEnabled(), func() string {
+		a.comparison.Summary(now), a.demo || paperEntriesEnabled(), func() string {
 			if a.demo || paperEntriesEnabled() { return "" }
 			return "安全暫停：新模擬開倉已關閉，持續收集行情並管理既有持倉"
 		}(),
@@ -667,6 +672,7 @@ func (a *App) handler() http.Handler {
 	})
 	mux.HandleFunc("/api/performance", a.publicPerformance)
 	mux.HandleFunc("/api/edge-research",a.edgeResearchPrivate)
+	mux.HandleFunc("/api/strategy-comparison",a.comparisonPrivate)
 	mux.HandleFunc("/api/diagnostics", func(w http.ResponseWriter, r *http.Request) {
 		a.mu.RLock()
 		defer a.mu.RUnlock()
@@ -771,6 +777,7 @@ func main() {
 		go a.chainlink.Run(ctx)
 		go a.observeMaker(ctx)
 		go a.edgeRun(ctx)
+		go a.comparisonRun(ctx)
 	}
 	go func() {
 		a.cycle(ctx)
@@ -795,7 +802,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v1.0.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v1.1.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()

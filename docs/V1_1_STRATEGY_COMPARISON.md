@@ -1,0 +1,14 @@
+# v1.1.0 — Prospective strategy comparison (research only)
+
+This change never enables paper entries, modifies the paper ledger, or places real orders. Maintain the Railway PAPER_ENTRIES_ENABLED safety pause (and emergency threshold if present). Existing loss history and older signal-selected edge samples remain intact but **are not mixed** into the new comparison.
+
+## Pre-registered sampling
+File: /app/data/strategy-comparison-v1.json on the existing Railway persistent volume. Observe the **first** complete market book between 90 and 120 seconds after the 5m or 15m market opens, **regardless of whether momentum and semivariance align**. Require a ready BTC 30/60-second feature window, both Up/Down bids, asks and positive ask depth, quote timestamps no older than 10 seconds and within five seconds of one another. Missing snapshots are not backfilled. Only market slug and condition-ID-matched *official Gamma published outcomes* after expiry provide labels; no Binance spot settlement or fabricated Chainlink evidence. Each market is recorded once, including across restarts. Corruption prevents overwriting the research archive.
+
+## Identical observed-market universe
+Compare (1) momentum-only, 30s threshold ±0.02%; (2) momentum aligned with 60s upside/downside semivariance skew ±0.20; (3) market-price baseline choosing the greater Up/Down bid/ask midpoint. Each rule may abstain; report decisions and scores per same observed set, not an artificially equal number of trades. If it chooses a side, assume buying one share at the sampled ask + 0.002 price slippage, including the date-aware Polymarket taker fee model plus 25bps additional conservative reserve. Payoff at *expiry* is 1 for a correct direction and 0 for wrong. No maker rebates, actual queue fills, early exits or wallet orders are booked. Directional win rates exclude abstentions. Market-price Brier uses normalized Up/Down midpoints, not market price as ground truth.
+
+## Forward-only evidence
+Before any observation can be counted as forward-evaluable, require at least **100 same-window** market outcomes already **officially resolved strictly before** its capture time. Do not assume future labels are known. At least 30 subsequent settled samples per window are needed for meaningful research review. Correlated adjacent markets, missing fixed-window samples, real-world execution costs, and the fact that this assumes settle-to-expiry rather than legacy early-exit behavior limit any conclusions. Positive net results are **research findings**, not authorization to re-enable even paper entries.
+
+Public /api/performance exposes only aggregate counts, a descriptive 5m/15m three-rule table and prospectively qualified counts. Authenticated /api/strategy-comparison exposes at most the 200 most recent raw observations for private audit. Both endpoints are read-only. Security and tests require no untrusted fork pull requests on the owner's Mac runner.

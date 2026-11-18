@@ -154,3 +154,8 @@ go run ./cmd/telegram-test --send
 ```
 
 Telegram setup is **code-complete only** until the SkewLab Railway service exists and secrets are configured there. Do not claim messages were delivered merely because CI passed.
+
+
+## v1.1.0 fixed-time strategy comparison (no trading authorization)
+
+An independent file on the existing persistent Railway volume captures the first complete 5m/15m Up/Down book 90–120 seconds after opening, regardless of signal agreement. Older momentum+semivariance-selected research is excluded to avoid selection bias. Compare momentum-only, momentum plus semivariance, and the market-price directional baseline on the same resolved observations, reporting decisions/abstentions and hypothetical one-share *hold-to-settlement* net P&L after modeled fees and slippage (not actual fills or the existing early-exit strategy). Time-causal forward results require 100 market outcomes that were resolved before each observation, followed by at least 30 forward samples per window. Private /api/strategy-comparison provides a bounded audit; public /api/performance includes aggregate comparison only. Gamma published outcomes are not independent Chainlink proof. The PAPER_ENTRIES_ENABLED safety pause remains off; this never authorizes trading. See docs/V1_1_STRATEGY_COMPARISON.md.
