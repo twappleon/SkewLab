@@ -97,7 +97,9 @@ func RejectReason(now time.Time,m Market,p Policy)string{
  if m.BestAsk-m.BestBid>p.MaxSpread{return "wide spread"}
  if m.LiquidityNum<p.MinLiquidityUSD||m.Volume24hr<p.MinVolume24hUSD{return "insufficient liquidity or volume"}
  var tokens []string
- if len(m.ClobTokenIDs)==0||json.Unmarshal(m.ClobTokenIDs,&tokens)!=nil||len(tokens)!=2||tokens[0]==""||tokens[1]==""{return "missing binary tokens"}
+ if len(m.ClobTokenIDs)==0{return "missing binary tokens"}
+ if err:=json.Unmarshal(m.ClobTokenIDs,&tokens);err!=nil {var encoded string;if json.Unmarshal(m.ClobTokenIDs,&encoded)!=nil||json.Unmarshal([]byte(encoded),&tokens)!=nil{return "missing binary tokens"}}
+ if len(tokens)!=2||tokens[0]==""||tokens[1]==""{return "missing binary tokens"}
  return ""
 }
 func Scan(now time.Time,markets []Market,p Policy)(Report,error){
