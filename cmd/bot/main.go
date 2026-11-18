@@ -657,6 +657,7 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handler() http.Handler {
 	mux := http.NewServeMux()
+	registerPolyRoutes(mux,polyResearchState)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" && r.URL.Path != "/performance" && r.URL.Path != "/admin" {
 			http.NotFound(w, r)
@@ -777,6 +778,7 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if !*demo { a.startPolyResearch(ctx, polyResearchState) }
 	if a.alerts != nil {
 		go a.alerts.Run(ctx)
 	}
