@@ -1,5 +1,14 @@
 # SkewLab — Polymarket BTC Quant v0.4.0
 
+## Passwordless read-only performance summary (v0.4.2)
+
+The root `/` and `/performance` now show only aggregate **paper-trading** metrics without a password. The read-only endpoint `/api/performance` exposes equity, realized paper P&L, return, win rate, drawdown, and position counts, but **not** individual trade IDs, market IDs, token IDs, or raw archives. Anyone with the public domain can read these aggregate metrics.
+
+The detailed dashboard moved to `/admin`, and `/api/state`, `/api/export.csv`, `/api/feeds`, and raw archives remain protected by the existing `DASHBOARD_PASSWORD`. Keep that Railway secret set; **do not remove it** to make the public summary work. `/health` remains unauthenticated.
+
+The UI refreshes every 15 seconds and warns when live BTC spot feed is stale. Reports are hypothetical, not investable or withdrawable profits. All real trading is disabled.
+
+
 **Status: locally tested, paper-only. No real orders, no wallets, no validated live-market profitability.** The project extends v0.2.0: 30-second BTC spot momentum, 60-second up/down semivariance, 5/15-minute Polymarket market discovery, conservative taker paper execution, official Gamma result reconciliation, date-aware taker fees, and authenticated RWD monitoring. v0.3.0 adds public CLOB WebSocket ingestion, *optional* authenticated PolyBolt Chainlink 60s TWAP capture, independent disagreement interlock, passive maker-queue research and crash-aware persistence.
 
 ## New in v0.4.0: first live-market evidence, safely

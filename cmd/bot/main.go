@@ -32,7 +32,7 @@ import (
 	"github.com/twappleon/SkewLab/internal/stream"
 )
 
-//go:embed dashboard.html
+//go:embed dashboard.html performance.html
 var dashboard embed.FS
 
 type Observation struct {
@@ -487,18 +487,65 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		_ = c.Write(row)
 	}
 }
+// publicPerformance exposes only read-only aggregate paper metrics.
+// Full positions, market identifiers, orderbooks and trading archives remain private.
+func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
+    a.mu.RLock()
+    defer a.mu.RUnlock()
+    w.Header().Set("Content-Type", "application/json; charset=utf-8")
+    w.Header().Set("Cache-Control", "no-store")
+    w.Header().Set("X-Content-Type-Options", "nosniff")
+    l := a.ledger
+    equity := l.CurrentEquity()
+    initial := l.Config.StartingCash
+    roi := 0.0
+    if initial > 0 { roi = 100*(equity-initial)/initial }
+    winRate := 0.0
+    if l.TotalClosed > 0 { winRate = 100*float64(l.Wins)/float64(l.TotalClosed) }
+    now := time.Now().UTC()
+    pending := 0
+    for _, p := range l.Positions {
+        if p.Status == "PENDING_RESOLUTION" { pending++ }
+    }
+    fresh := a.lastBTC.Price > 0 && !a.lastBTC.Time.IsZero() && now.Sub(a.lastBTC.Time) >= 0 && now.Sub(a.lastBTC.Time) <= 15*time.Second
+    _ = json.NewEncoder(w).Encode(struct {
+        Mode string `json:"mode"`
+        Version string `json:"version"`
+        AsOf time.Time `json:"as_of"`
+        LastMarketTick time.Time `json:"last_market_tick,omitempty"`
+        FeedFresh bool `json:"feed_fresh"`
+        InitialCash float64 `json:"initial_cash_usd"`
+        Equity float64 `json:"equity_usd"`
+        ReturnPct float64 `json:"return_pct"`
+        RealizedPnL float64 `json:"realized_pnl_usd"`
+        ClosedTrades int `json:"closed_trades"`
+        Wins int `json:"wins"`
+        WinRatePct float64 `json:"win_rate_pct"`
+        MaxDrawdownPct float64 `json:"max_drawdown_pct"`
+        OpenPositions int `json:"open_positions"`
+        PendingSettlement int `json:"pending_settlement"`
+    }{mode(a.demo),"0.4.2",now,a.lastBTC.Time,fresh,
+      initial,equity,roi,l.RealizedPnL,l.TotalClosed,l.Wins,
+      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending})
+}
+
 func (a *App) handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		data, _ := dashboard.ReadFile("dashboard.html")
-		_, _ = w.Write(data)
-	})
+        if r.URL.Path != "/" && r.URL.Path != "/performance" && r.URL.Path != "/admin" {
+            http.NotFound(w,r)
+            return
+        }
+        w.Header().Set("Content-Type","text/html; charset=utf-8")
+        w.Header().Set("Cache-Control","no-store")
+        w.Header().Set("X-Content-Type-Options","nosniff")
+        filename := "performance.html"
+        if r.URL.Path == "/admin" { filename = "dashboard.html" }
+        data,err := dashboard.ReadFile(filename)
+        if err != nil { http.Error(w,"page unavailable",http.StatusInternalServerError); return }
+        _,_ = w.Write(data)
+    })
+    mux.HandleFunc("/api/performance",a.publicPerformance)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true,"execution":"paper_only"}`))
@@ -520,7 +567,8 @@ func (a *App) handler() http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		password := os.Getenv("DASHBOARD_PASSWORD")
-		if password != "" && r.URL.Path != "/health" {
+		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance"
+        if !public && password != "" {
 			user := os.Getenv("DASHBOARD_USER")
 			if user == "" {
 				user = "admin"
@@ -610,7 +658,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.4.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v0.4.2 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
