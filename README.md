@@ -1,3 +1,7 @@
+# SkewLab v0.9.0 — research-only calibrated edge evidence
+
+The trading safety pause remains active. While paused, the bot collects one timestamped, price-aware candidate per market and labels it only after Polymarket Gamma publishes a final result. A time-causal walk-forward study and 95% Wilson lower-bound estimator are available in `cmd/edgecheck`; **these are not permission to reactivate trading**. See [research method](docs/V0_9_EDGE_RESEARCH.md). Existing account balances, historical records and Telegram credentials are unchanged.
+
 # Safety update v0.7.1 — stop new paper entries pending positive-edge validation
 
 On 2026-11-18, the first four completed paper positions lost $38.26, with 3 simulated stop-loss closes exceeding the nominal 5% trigger. A no-movement 50c/50c contract round-trip loses ~7.97% under the app's fee/slippage buffer (0.07 per-share taker coefficient, 0.002 simulated slippage per side, 25 bps buffer per fill). This alone can trigger the -5% stop within four seconds; the momentum+semivariance signal cannot be treated as a calibrated probability estimate.
