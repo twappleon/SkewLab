@@ -552,7 +552,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
 		Telegram            notify.Status       `json:"telegram_notifications"`
-	}{mode(a.demo), "0.9.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
+	}{mode(a.demo), "1.0.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
 }
 // Read-only feeds, historical reconciliation and existing-position exits
 // continue while new live-data paper entries remain explicitly disabled.
@@ -627,15 +627,16 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 		OpenPositions     int                        `json:"open_positions"`
 		PendingSettlement int                        `json:"pending_settlement"`
 		EdgeResearch edge.RecordStatus `json:"edge_research"`
+		EdgeQuality edge.Quality `json:"edge_quality"`
 		Analytics         analytics.Summary          `json:"analytics"`
 		MarketWindows     []analytics.MarketWindow   `json:"market_windows"`
 		RootCauses        analytics.RootCauseSummary `json:"root_causes"`
 		PaperEntriesEnabled bool `json:"paper_entries_enabled"`
 		EntryPauseReason string `json:"entry_pause_reason,omitempty"`
 	}{
-		mode(a.demo), "0.9.0", now, a.lastBTC.Time, fresh,
+		mode(a.demo), "1.0.0", now, a.lastBTC.Time, fresh,
 		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
-		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, a.edge.Status(), analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
+		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, a.edge.Status(), a.edge.AssessQuality(now), analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
 		a.demo || paperEntriesEnabled(), func() string {
 			if a.demo || paperEntriesEnabled() { return "" }
 			return "安全暫停：新模擬開倉已關閉，持續收集行情並管理既有持倉"

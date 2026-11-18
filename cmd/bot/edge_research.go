@@ -51,10 +51,11 @@ func (a *App) edgeResearchPrivate(w http.ResponseWriter, r *http.Request) {
 	// settle-to-expiry, unlike the legacy paper strategy's early exits.
 	out := struct {
 		Status      edge.RecordStatus `json:"status"`
+		Quality edge.Quality `json:"quality"`
 		WalkForward edge.WalkForward  `json:"walk_forward"`
 		Recent      []edge.Candidate  `json:"recent_private_samples"`
 		Notice      string            `json:"notice"`
-	}{st, edge.WalkForwardCheck(records, .002, 25), records, "Research only; no real trading, no paper-entry approval. Gamma is not independent Chainlink evidence."}
+	}{st, a.edge.AssessQuality(time.Now().UTC()), edge.WalkForwardCheck(records, .002, 25), records, "Research only; no real trading, no paper-entry approval. Gamma is not independent Chainlink evidence."}
 	if len(out.Recent) > 100 {
 		out.Recent = out.Recent[len(out.Recent)-100:]
 	}

@@ -1,3 +1,7 @@
+# SkewLab v1.0.0 — Research quality diagnostics
+
+New read-only 5m/15m research sample counters, resolved Gamma outcome backlog, invalid chronology checks, and cohort-size review. Full records remain password-protected and **paper entries remain paused**. See [research quality protocol](docs/V1_0_RESEARCH_QUALITY.md).
+
 # SkewLab v0.9.0 — research-only calibrated edge evidence
 
 The trading safety pause remains active. While paused, the bot collects one timestamped, price-aware candidate per market and labels it only after Polymarket Gamma publishes a final result. A time-causal walk-forward study and 95% Wilson lower-bound estimator are available in `cmd/edgecheck`; **these are not permission to reactivate trading**. See [research method](docs/V0_9_EDGE_RESEARCH.md). Existing account balances, historical records and Telegram credentials are unchanged.
