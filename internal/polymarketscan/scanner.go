@@ -30,6 +30,8 @@ type Market struct {
  BestBid float64 `json:"bestBid"`
  BestAsk float64 `json:"bestAsk"`
  ClobTokenIDs json.RawMessage `json:"clobTokenIds"`
+ Version string `json:"version"`
+ PositionIDs []string `json:"positionIds"`
 }
 type Candidate struct {
  ID string `json:"market_id"`
@@ -96,10 +98,7 @@ func RejectReason(now time.Time,m Market,p Policy)string{
  if math.IsNaN(m.BestBid)||math.IsNaN(m.BestAsk)||m.BestBid<=0||m.BestAsk>=1||m.BestAsk<=m.BestBid{return "invalid quote"}
  if m.BestAsk-m.BestBid>p.MaxSpread{return "wide spread"}
  if m.LiquidityNum<p.MinLiquidityUSD||m.Volume24hr<p.MinVolume24hUSD{return "insufficient liquidity or volume"}
- var tokens []string
- if len(m.ClobTokenIDs)==0{return "missing binary tokens"}
- if err:=json.Unmarshal(m.ClobTokenIDs,&tokens);err!=nil {var encoded string;if json.Unmarshal(m.ClobTokenIDs,&encoded)!=nil||json.Unmarshal([]byte(encoded),&tokens)!=nil{return "missing binary tokens"}}
- if len(tokens)!=2||tokens[0]==""||tokens[1]==""{return "missing binary tokens"}
+ if len(m.TokenIDs())!=2{return "missing binary assets"}
  return ""
 }
 func Scan(now time.Time,markets []Market,p Policy)(Report,error){
@@ -110,4 +109,21 @@ func Scan(now time.Time,markets []Market,p Policy)(Report,error){
   r.Candidates=append(r.Candidates,Candidate{ID:m.ID,Question:m.Question,URL:"https://polymarket.com/event/"+url.PathEscape(m.Slug),Bid:m.BestBid,Ask:m.BestAsk,Spread:m.BestAsk-m.BestBid,LiquidityUSD:m.LiquidityNum,Volume24hUSD:m.Volume24hr,Decision:"NO_TRADE",Reason:"No independently calibrated probability or verified executable price/cost, legal eligibility or settlement audit"})
  }
  return r,nil
+}
+
+// TokenIDs selects V2 position IDs or legacy CTF token IDs; malformed
+// encoded arrays fail closed rather than silently producing blank orders.
+func (m Market) TokenIDs() []string {
+ if m.Version=="v2" {
+  if len(m.PositionIDs)==2&&m.PositionIDs[0]!=""&&m.PositionIDs[1]!="" {return m.PositionIDs}
+  return nil
+ }
+ var ids []string
+ if len(m.ClobTokenIDs)==0{return nil}
+ if json.Unmarshal(m.ClobTokenIDs,&ids)!=nil {
+  var encoded string
+  if json.Unmarshal(m.ClobTokenIDs,&encoded)!=nil||json.Unmarshal([]byte(encoded),&ids)!=nil{return nil}
+ }
+ if len(ids)!=2||ids[0]==""||ids[1]==""{return nil}
+ return ids
 }
