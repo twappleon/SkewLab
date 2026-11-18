@@ -32,6 +32,7 @@ type polyCandidate struct {
  Quote polymarketv2.Quote `json:"clob_quote"`
  Decision string `json:"decision"`
  Reason string `json:"reason"`
+ ConservativeEntryFeeUSD float64 `json:"conservative_entry_fee_usd"`
 }
 var polyResearchState = newPolyState()
 
@@ -55,12 +56,13 @@ func(s *polyState)scan(ctx context.Context)polySnapshot{
   if i>=8{break}
   entry:=polyCandidate{Question:c.Question,URL:c.URL,Decision:"NO_TRADE",Reason:"independent calibrated probability unavailable"}
   for _,m:=range markets{if m.ID!=c.ID{continue}
-   tokens:=polyTokens(m.ClobTokenIDs)
+   tokens:=m.TokenIDs()
    if len(tokens)!=2||tokens[0]==""{entry.Reason="missing or invalid CLOB token IDs";break}
    bookCtx,cancel:=context.WithTimeout(ctx,5*time.Second)
    book,e:=polymarketv2.FetchBook(bookCtx,nil,tokens[0]);cancel()
    if e!=nil{entry.Reason="CLOB unavailable (no synthetic fills)";break}
    entry.Quote=polymarketv2.Evaluate(book,time.Now().UTC(),5)
+   if entry.Quote.Executable{entry.ConservativeEntryFeeUSD=polymarketv2.Fee(5,entry.Quote.BuyVWAP,0.07)}
    if !entry.Quote.Executable{entry.Reason=entry.Quote.Reason}else{entry.Reason="visible depth only, no independent probability model evidence"}
    break
   }
