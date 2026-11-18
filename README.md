@@ -1,4 +1,4 @@
-# SkewLab — Polymarket BTC Quant v0.4.0
+# SkewLab — Polymarket BTC Quant v0.6.0
 
 ## v0.5.0 — Seven and fourteen day paper performance
 
@@ -6,6 +6,14 @@ The passwordless summary at / and /api/performance now reports 7-day closed-trad
 
 These figures are hypothetical and sensitive to fee/slippage assumptions. Data quality warnings flag mismatched recorded closes and small sample sizes. The public API includes **no per-trade details**; /admin, /api/state, /api/export.csv and raw market archives remain Basic Auth protected. Keep DASHBOARD_PASSWORD set in Railway. See [methodology](docs/V0_5_PERFORMANCE.md).
 
+
+## v0.6.0 — 5m/15m market comparison and exit diagnosis
+
+The public, passwordless `/api/performance` response adds `market_windows`: 14-day aggregates for 5m, 15m and unknown markets. Each aggregate includes completed paper-trade count, wins, realized simulated net P&L, average net per trade, Profit Factor when defined, and reason counts (take profit, stop loss, close before expiry, Gamma settlement, other). Unresolved holdings and future-dated records are excluded. Market IDs, token IDs and individual trade records are **not** published; aggregate performance is public to anyone with the URL.
+
+The existing Telegram daily summary additionally reports the 5m and 15m breakdown. No real trade execution is enabled. See `docs/V0_6_MARKET_COMPARISON.md`.
+
+A 2026-11-18 observed sample of four paper closes showed -$38.26 net result and PF 0.02. Four trades are far too few to establish statistical significance; the nominal $30 daily loss cutoff is a **pre-entry gate**, not a guaranteed limit on loss after market expiry or missing bids.
 
 ## Passwordless read-only performance summary (v0.4.2)
 

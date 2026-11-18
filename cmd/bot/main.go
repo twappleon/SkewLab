@@ -315,6 +315,12 @@ func (a *App) alertDailySummary(now time.Time) {
  msg:=fmt.Sprintf("📋 SkewLab 每日模擬報告（%s 柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現淨損益：%+.2f USD\n完成平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n近 7 天已實現損益：%+.2f USD（%d 筆）\n近 14 天平均每筆：%s\n近 14 天 Profit Factor：%s\n樣本狀態：%s\n未完成持倉：%d\n僅模擬，非可提領收益。",
  day,a.ledger.CurrentEquity(),a.ledger.RealizedPnL,a.ledger.TotalClosed,a.ledger.Wins,a.ledger.MaxDrawdownPct,
  stats.Last7Days.NetPnLUSD,stats.Last7Days.Closed,avg,pf,quality,a.ledger.OpenPositions())
+
+ for _, group := range analytics.CompareMarkets(a.ledger, now) {
+  if group.Market == "other" { continue }
+  msg += fmt.Sprintf("\n%s 市場（14日）：%d 筆，淨損益 %+.2f USD，止盈 %d、止損 %d、官方結算 %d",
+    group.Market, group.Period.Closed, group.Period.NetPnLUSD, group.Exits.TakeProfit, group.Exits.StopLoss, group.Exits.Settled)
+ }
  a.alerts.Publish("daily:"+day,msg)
 }
 
@@ -536,9 +542,10 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
         OpenPositions int `json:"open_positions"`
         PendingSettlement int `json:"pending_settlement"`
  Analytics analytics.Summary `json:"analytics"`
-    }{mode(a.demo),"0.5.0",now,a.lastBTC.Time,fresh,
+ MarketWindows []analytics.MarketWindow `json:"market_windows"`
+    }{mode(a.demo),"0.6.0",now,a.lastBTC.Time,fresh,
       initial,equity,roi,l.RealizedPnL,l.TotalClosed,l.Wins,
-      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending,analytics.Calculate(l,now)})
+      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending,analytics.Calculate(l,now),analytics.CompareMarkets(l,now)})
 }
 
 func (a *App) handler() http.Handler {
@@ -670,7 +677,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.5.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v0.6.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()

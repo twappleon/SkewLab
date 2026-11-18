@@ -28,6 +28,9 @@ h2.subhead{font-size:1.34rem;letter-spacing:-.01em;margin:28px 0 13px}
 <section class="card"><div class="label">近 14 天 Profit Factor</div><div class="value" id="factor14">—</div><div class="detail">總獲利 ÷ 總虧損；無虧損樣本時不適用</div></section>
 </div>
 <section class="note"><strong>樣本可信度</strong><div id="evidence">尚未完成樣本分析</div><small>僅已平倉／正式結算的模擬交易，未完成倉位不計入獲利；未滿 30 筆無法評估策略優勢。</small></section>
+<h2 class="subhead">5 分鐘 vs 15 分鐘市場（近 14 天）</h2>
+<div class="data-table-wrap"><table class="data-table"><thead><tr><th>市場</th><th>平倉筆數</th><th>勝率</th><th>淨損益 USD</th><th>平均每筆</th><th>Profit Factor</th><th>官方結算／止損／止盈</th></tr></thead><tbody id="market-windows"><tr><td colspan="7">正在讀取…</td></tr></tbody></table></div>
+<section class="note"><strong>比較說明</strong><p>只計入已平倉及官方結果結算的模擬交易，少於 30 筆不能判斷策略優勢。每日虧損門檻只限制新的模擬開倉，不是保證的最大虧損；市場報價深度不足時止損可能無法模擬成交。以下彙總數字對所有知道網址的人可見。</p></section>
 <h2 class="subhead">每日已實現模擬損益（柬埔寨時間）</h2>
 <div class="data-table-wrap"><table class="data-table"><thead><tr><th>日期</th><th>平倉筆數</th><th>獲勝</th><th>淨損益 USD</th></tr></thead><tbody id="daily"><tr><td colspan="4">正在讀取…</td></tr></tbody></table></div>
 <section class="note"><strong>目前資料狀態</strong><div id="status" role="status">正在讀取模擬資料…</div><small id="updated"></small></section>
@@ -59,6 +62,32 @@ function renderPeriod(d){
  if(!list.children.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=4;cell.textContent='目前尚無完整統計資料';row.appendChild(cell);list.appendChild(row)}
 }
 
-async function update(){try{const res=await fetch('/api/performance',{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);const d=await res.json();display('equity',d.equity_usd,cash);display('pnl',d.realized_pnl_usd,cash);display('returns',d.return_pct,percent);el('wins').textContent=d.closed_trades+' / '+(d.closed_trades?d.win_rate_pct.toFixed(1)+'%':'—');el('drawdown').textContent=(d.max_drawdown_pct||0).toFixed(2)+'%';el('positions').textContent=d.open_positions+' / '+d.pending_settlement;renderPeriod(d);el('status').textContent=d.mode==='SYNTHETIC DEMO'?'合成資料示範':d.feed_fresh?'BTC 現貨行情最近 15 秒內已更新':'行情延遲或尚未取得，暫不能推論模擬績效有效性';el('updated').textContent='更新於 '+new Date(d.as_of).toLocaleString('zh-TW')+' · 最近行情 '+(d.last_market_tick && d.last_market_tick!=='0001-01-01T00:00:00Z'?new Date(d.last_market_tick).toLocaleString('zh-TW'):'尚無');}catch(e){el('status').textContent='暫時讀取失敗：'+e.message+'；將自動重試。'}}
+function renderMarkets(data){
+ const list=el('market-windows');list.replaceChildren();
+ for(const w of (data.market_windows||[])){
+  const p=w.period||{},x=w.exits||{};
+  const row=document.createElement('tr');
+  const values=[
+   w.market==='other'?'其他／未分類':w.market,
+   p.closed??0,Number.isFinite(p.win_rate_pct)?p.win_rate_pct.toFixed(1)+'%':'—',
+   cash(p.net_pnl_usd),cash(p.average_net_usd),
+   Number.isFinite(p.profit_factor)?p.profit_factor.toFixed(2):'—',
+   (x.settled||0)+' / '+(x.stop_loss||0)+' / '+(x.take_profit||0)
+  ];
+  for(let i=0;i<values.length;i++){
+   const cell=document.createElement('td');cell.textContent=String(values[i]);
+   if(i===3&&Number.isFinite(p.net_pnl_usd))cell.className=p.net_pnl_usd<0?'bad':'good';
+   row.appendChild(cell);
+  }
+  if((p.closed??0)<30)row.title='樣本不足：完成交易未滿 30 筆';
+  list.appendChild(row);
+ }
+ if(!list.children.length){
+  const row=document.createElement('tr'),cell=document.createElement('td');
+  cell.colSpan=7;cell.textContent='尚無市場分類資料';row.appendChild(cell);list.appendChild(row);
+ }
+}
+
+async function update(){try{const res=await fetch('/api/performance',{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);const d=await res.json();display('equity',d.equity_usd,cash);display('pnl',d.realized_pnl_usd,cash);display('returns',d.return_pct,percent);el('wins').textContent=d.closed_trades+' / '+(d.closed_trades?d.win_rate_pct.toFixed(1)+'%':'—');el('drawdown').textContent=(d.max_drawdown_pct||0).toFixed(2)+'%';el('positions').textContent=d.open_positions+' / '+d.pending_settlement;renderPeriod(d);renderMarkets(d);el('status').textContent=d.mode==='SYNTHETIC DEMO'?'合成資料示範':d.feed_fresh?'BTC 現貨行情最近 15 秒內已更新':'行情延遲或尚未取得，暫不能推論模擬績效有效性';el('updated').textContent='更新於 '+new Date(d.as_of).toLocaleString('zh-TW')+' · 最近行情 '+(d.last_market_tick && d.last_market_tick!=='0001-01-01T00:00:00Z'?new Date(d.last_market_tick).toLocaleString('zh-TW'):'尚無');}catch(e){el('status').textContent='暫時讀取失敗：'+e.message+'；將自動重試。'}}
 update();setInterval(update,15000);
 </script></body></html>
