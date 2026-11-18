@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/twappleon/SkewLab/internal/oracle"
 	"github.com/twappleon/SkewLab/internal/paper"
+	"github.com/twappleon/SkewLab/internal/polymarket"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -104,5 +106,63 @@ func TestReconcileOfficialOutcomeOnceWithoutSpot(t *testing.T) {
 	a.reconcile(context.Background(), now.Add(time.Minute))
 	if a.ledger.Cash != 1020 || a.ledger.TotalClosed != 1 {
 		t.Fatal("duplicate settlement")
+	}
+}
+
+func TestCorruptedSavedLedgerFailsClosed(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "paper-ledger.json"), []byte(`{"cash":"invalid"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a := NewApp(dir, true, .02, .2, time.Second)
+	if a.persistError == "" {
+		t.Fatal("corrupted state silently reset and enabled trading")
+	}
+	a.cycle(context.Background())
+	original, e := os.ReadFile(filepath.Join(dir, "paper-ledger.json"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if string(original) != `{"cash":"invalid"}` {
+		t.Fatal("corrupted ledger was overwritten")
+	}
+	if a.errorMessage == "" {
+		t.Fatal("failure was hidden from dashboard")
+	}
+}
+func TestRestartRestoresCashLedgerWithoutDuplicatePosition(t *testing.T) {
+	dir := t.TempDir()
+	a := NewApp(dir, true, .02, .2, time.Second)
+	a.mu.Lock()
+	a.ledger.Cash = 977.55
+	a.saveLedger()
+	a.mu.Unlock()
+	b := NewApp(dir, true, .02, .2, time.Second)
+	if b.persistError != "" || b.ledger.Cash != 977.55 {
+		t.Fatalf("restore failed %f %s", b.ledger.Cash, b.persistError)
+	}
+}
+
+func TestOracleDisagreementBlocksOfficialSettlement(t *testing.T) {
+	start := time.Unix((time.Now().Unix()/300-2)*300, 0).UTC()
+	end := start.Add(5 * time.Minute)
+	slug := polymarket.MarketSlug(start, 300)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/markets/slug/"+slug {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"slug":"` + slug + `","conditionId":"0xccc","closed":true,"outcomes":"[\"Up\",\"Down\"]","outcomePrices":"[\"1\",\"0\"]"}`))
+	}))
+	defer server.Close()
+	now := end.Add(time.Minute)
+	a := NewApp(t.TempDir(), false, .02, .2, time.Second)
+	a.api.Gamma = server.URL
+	a.ledger.Cash = 980
+	a.ledger.Positions = []paper.Position{{Market: slug, ConditionID: "0xccc", Side: "UP", Status: "PENDING_RESOLUTION", Qty: 40, EntryCost: 20, MarketEnd: end, MarkPnL: -20}}
+	a.chainlink.Seed([]oracle.Tick{{Time: start, Price: 100, Source: "chainlink-twap-60s"}, {Time: end, Price: 99, Source: "chainlink-twap-60s"}})
+	a.reconcile(context.Background(), now)
+	if a.oracleConflict == "" || a.ledger.Cash != 980 || a.ledger.Positions[0].Status != "PENDING_RESOLUTION" {
+		t.Fatalf("oracle disagreement failed closed? %+v, %s", a.ledger, a.oracleConflict)
 	}
 }

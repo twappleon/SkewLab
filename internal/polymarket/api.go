@@ -18,11 +18,13 @@ const GammaBase = "https://gamma-api.polymarket.com"
 const CLOBBase = "https://clob.polymarket.com"
 
 type Quote struct {
-	Bid      float64 `json:"bid"`
-	Ask      float64 `json:"ask"`
-	BidDepth float64 `json:"bid_depth"`
-	AskDepth float64 `json:"ask_depth"`
-	TickSize float64 `json:"tick_size"`
+	Bid       float64   `json:"bid"`
+	Ask       float64   `json:"ask"`
+	BidDepth  float64   `json:"bid_depth"`
+	AskDepth  float64   `json:"ask_depth"`
+	TickSize  float64   `json:"tick_size"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	Source    string    `json:"source,omitempty"`
 }
 type Market struct {
 	Slug        string    `json:"slug"`
@@ -219,7 +221,10 @@ func (c *Client) Book(ctx context.Context, token string) (Quote, error) {
 	if now.Sub(at) > 12*time.Second || at.Sub(now) > 3*time.Second {
 		return Quote{}, fmt.Errorf("stale/future CLOB snapshot timestamp: %s", at.Format(time.RFC3339Nano))
 	}
-	return parseBook(b)
+	q, parseErr := parseBook(b)
+	q.UpdatedAt = at
+	q.Source = "CLOB_REST"
+	return q, parseErr
 }
 func (c *Client) RefreshQuotes(ctx context.Context, m Market) (Market, error) {
 	up, e1 := c.Book(ctx, m.UpToken)

@@ -62,8 +62,8 @@ func Plan(m polymarket.Market, signal strategy.Result, now time.Time, c Config) 
 		p.Reason = "invalid maker configuration"
 		return p
 	}
-	p.Bid = math.Round((q.Bid+c.Tick)/c.Tick) * c.Tick
-	p.Ask = math.Round((q.Ask-c.Tick)/c.Tick) * c.Tick
+	p.Bid = math.Round((q.Bid+tick)/tick) * tick
+	p.Ask = math.Round((q.Ask-tick)/tick) * tick
 	p.Bid = math.Round(p.Bid*1e6) / 1e6
 	p.Ask = math.Round(p.Ask*1e6) / 1e6
 	if p.Ask <= p.Bid || p.Ask >= q.Ask || p.Bid <= q.Bid || p.Bid >= q.Ask || p.Ask <= q.Bid {

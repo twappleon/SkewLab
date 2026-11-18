@@ -15,15 +15,15 @@ Deliver a **scientifically testable**, transparent, fail-closed BTC prediction-m
 8. Respect legitimate platform restrictions, local laws, and Polymarket official documentation; no geoblock circumvention.
 9. Preserve existing tested behavior and database state. Backwards-compatible changes with migration validation.
 
-## Recommended next work after v0.2.0, in order
+## Recommended next work after v0.3.0, in order
 
-1. Test live read-only Gamma/CLOB/BTC endpoints on a real networked machine. Update parsing if market API evolves.
-2. Extend existing official Gamma winner reconciliation with independent authenticated Chainlink/PolyBolt 60s TWAP capture and discrepancy alerting; never claim Gamma winner data is oracle price capture.
-3. Implement real-time market book WebSocket with sequence/reconnect handling, and store reproducible L2 snapshots.
-4. Extend existing safe non-executable maker quote planning with proper queue-fill simulation, inventory controls, and calibrated edge estimates; no maker fill assumptions before L2 and trade evidence.
-5. Historical train/validation/test partition, walk-forward comparisons and hold-out forward paper trading; risk-of-ruin and uncertainty bounds.
-6. Operational hardening: private dashboard, durable database, outage fail-safe, metrics, alerting, prolonged network simulation, CI.
-7. After concrete evidence and user approval only, separately implement secure live execution.
+1. Deploy code to a newly owned, access-protected repository and single-process Railway service with a persistent volume. No public link before a tested healthy service is reachable.
+2. Validate live read-only Gamma/CLOB/BTC schemas and the public WebSocket in a networked environment. Test 5m/15m market rollovers, intermittent DNS, silent streams, forced reconnect, and crossed books.
+3. Configure authorized CLOB API credentials + Chainlink API key via secrets manager. Check live PolyBolt authenticated `chainlink` TWAP 60s against official Gamma outcomes; log all mismatches without auto-overriding resolutions.
+4. Gather 7–14 days of reliable timestamped real market observations with a documented uptime/error report; compare indicative maker queue estimates to genuine execution evidence before booking any fills.
+5. Add full maker inventory constraints, fee changes, walk-forward strategy comparison, calibration, latency, adverse selection and uncertainty bounds; no profits from synthetic assumptions.
+6. Add PostgreSQL/SQLite WAL backup and migrations, alerts, server resource metrics and recovery drills.
+7. Implement secure live execution only after evidence, explicit informed human approval and all platform/jurisdiction checks.
 
 ## Quick verification
 

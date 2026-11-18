@@ -1,80 +1,88 @@
-# SkewLab — Polymarket BTC Quant v0.2.0
+# SkewLab — Polymarket BTC Quant v0.3.0
 
-**Go paper-trading research app, not real-money trading software.** Targets Polymarket BTC 5m/15m Up/Down markets, uses Binance/Coinbase *spot* observations for 30s momentum and 60s upside/downside semivariance, fetches public Polymarket Gamma and CLOB market data, performs conservative hypothetical taker transactions, and produces **non-executable** maker quote research. Real orders, wallet authentication and real-money trades are deliberately absent.
+**Status: locally tested, paper-only. No real orders, no wallets, no validated live-market profitability.** The project extends v0.2.0: 30-second BTC spot momentum, 60-second up/down semivariance, 5/15-minute Polymarket market discovery, conservative taker paper execution, official Gamma result reconciliation, date-aware taker fees, and authenticated RWD monitoring. v0.3.0 adds public CLOB WebSocket ingestion, *optional* authenticated PolyBolt Chainlink 60s TWAP capture, independent disagreement interlock, passive maker-queue research and crash-aware persistence.
 
-> **Data provenance matters:** Synthetic demo data is not real performance. Spot BTC is not Chainlink TWAP. Gamma-reported official winning outcome is not an independent oracle capture. Proposed maker quotes are **never** counted as trades or profits.
+## Run locally
 
-## Start / verification
-
-Requires Go 1.23+; no external Go modules. Open local dashboard at `http://localhost:8080`.
+Requires Go 1.23+ (standard library only).
 
 ```bash
 go test -race ./...
 go vet ./...
-go run ./cmd/bot --demo           # Clearly labeled synthetic demo
-# OR:
-go run ./cmd/bot                  # Real public feeds, paper execution only
+go run ./cmd/bot --demo                    # SYNTHETIC data and trades only
+go run ./cmd/bot --data-dir ./data         # public market APIs; paper trades only
+```
 
-# Replay your recorded (non-synthetic) observations:
+Open `http://localhost:8080`. The Mac scripts `start-demo-mac.command` and `start-live-paper-mac.command` are included. Set `PORT=8081` for a different port. Use `DASHBOARD_USER` and `DASHBOARD_PASSWORD` (environment variables) for HTTP Basic Auth, and **always use HTTPS behind a trusted reverse proxy** if externally accessible. Production Railway startup refuses to serve the live-paper dashboard without `DASHBOARD_PASSWORD`. `/health` reports liveness only, NOT live feed readiness. `/api/feeds` reports the actual stream status.
+
+### Optional Chainlink TWAP streaming (read-only)
+
+Reference prices were moved to the authenticated **PolyBolt** protocol. Configure the following secrets on the host using your secrets manager, **not source control, CLI arguments, or chat**:
+
+```
+POLYMARKET_API_KEY
+POLYMARKET_API_SECRET
+POLYMARKET_API_PASSPHRASE
+CHAINLINK_API_KEY
+```
+
+No wallet/private key is used. If one of these is missing, the Chainlink data feed explicitly shows `NOT CONFIGURED` and **never invents TWAP values**. Connection to `wss://ws-live-v2.polymarket.com/ws` performs `auth` with Chainlink key on the first frame, waits for `authed`, and subscribes to `price.crypto.twap` with `{"symbol":"btcusd","window_seconds":60,"provider":"chainlink"}`. It verifies a Chainlink provider acknowledgement, BTC/USD symbol, window size, event sequence and drop count; stale/future updates and sequence gaps cause a reconnect. Captured observations are recorded in `chainlink-twap-60s.jsonl`, with the known exact-source label. Some market bounds may not appear exactly even when data is streaming; the audit requires exact timestamps and refuses to guess them.
+
+Official protocol: https://docs.polymarket.com/api-reference/live-data/overview
+
+### Public market WebSocket
+
+- Read-only `wss://ws-subscriptions-clob.polymarket.com/ws/market`. After discovering active token IDs via Gamma, subscribe to 5m/15m Up and Down tokens.
+- No API key is needed for public CLOB market streams. Reconnect with backoff, resubscribe on market rotation, discard old books and reject out-of-order, stale, crossed or missing books. Support both `book` snapshots and `price_change` updates; use `last_trade_price` for the non-executable queue study.
+- The trading strategy only accepts a fresh **pair** of WS quotes; otherwise it fetches and timestamp-validates both CLOB REST books. WS reconnects or a stale snapshot **never authorize fictional fills**.
+- Spot BTC still comes from Binance/Coinbase and is NOT the Chainlink market resolution feed. Momentum history resets when the spot venue changes. A valid signal is not sufficient to establish positive expected value.
+
+Official protocol: https://docs.polymarket.com/market-data/realtime-data
+
+### Passive maker queue research — never a booked trade
+
+An indicative maker proposal now also starts a *different*, conservative research study at the observed public best bid. It stores the initial visible queue depth and hypothetical share quantity. Only later public `last_trade_price` events labeled SELL at **the exact price** can reduce observed queue ahead. Obvious duplicate timestamps are conservatively ignored; quote cancellation and stale books do not count as traded volume. Reaching the estimated queue threshold yields **`HYPOTHETICAL_QUEUE_CLEARED_NOT_ACTUAL_FILL`**, never a realized fill, inventory, rebate, PnL or booked maker strategy win. This remains an uncalibrated estimate: the hypothetical order was never submitted, and the public trade channel cannot establish the order's actual queue rank or execution. Sell-side research does not imply free inventory.
+
+### Official resolution and independent TWAP conflicts
+
+Gamma must publish a closed outcome with matching condition ID and exact binary winner prices. Settlement is idempotent. When both exact market boundary TWAP values have been recorded through Chainlink, the engine additionally compares `close >= open` and **blocks the settlement plus future paper entries on disagreement** (manual review required). When exact Chainlink edges are missing, Gamma-only settlement remains possible and is labelled **not independently verified**. Missing TWAP samples never become synthetic Chainlink prices. Exchange spot cannot be used for a settlement comparison.
+
+The official 5/15-minute BTC market's Chainlink **TWAP 60s** is the settlement reference. Taker fee uses `shares × coefficient × price × (1 − price)` with the official 0.07 (before 2026-11-20 23:59 UTC) and 0.05 (on/after) coefficient. An additional conservative 25-bps notional fee and 0.002/share slippage per fill are included. No rebates are assumed. Exits require **net profit ≥1%** after modeled costs, or a risk exit, and depth checks are mandatory. Default starting balance $1,000, $20 entry, $80 exposure and -$30 observed daily loss limit.
+
+Fees: https://docs.polymarket.com/trading/fees and https://docs.polymarket.com/programs/fee-and-rebate-changes-november-2026
+
+## Persistence, restart and audit
+
+One process per persistent volume. `--data-dir ./data` holds private:
+
+- `paper-ledger.json` (atomic write + file fsync + rename + directory fsync). Corrupted/unreadable ledger **halts all paper execution and prevents overwrite**, instead of silently resetting account equity.
+- `observations.jsonl` — replayable market/spot observations, 50MiB rotated segments.
+- `chainlink-twap-60s.jsonl` — genuine read-only authenticated samples if connected, 25MiB rotated segments; unrotated tail is restored into the on-process audit cache after restart, but NEVER treated as a live connection.
+- `maker-queue-audit.jsonl` — explicitly hypothetical study events, 25MiB rotated segments.
+
+Rotated segment filenames carry a UTC timestamp suffix. JSONL writes are appended and synced before return. If file writes fail, **ledger persistence errors halt paper trading**. Place `data/` on a real persistent Railway volume, never an ephemeral container filesystem; configure auth before public deployment. `Dockerfile` and `railway.toml` are included but a cloud deployment has **not** been achieved or verified.
+
+API routes: `/`, `/health`, `/api/state`, `/api/feeds`, `/api/export.csv`, `/api/observations.jsonl`, `/api/chainlink-twap.jsonl` (raw exports require dashboard authentication).
+
+## Tests and caveats
+
+```bash
+go test -race ./...
+go vet ./...
+go build ./cmd/bot
 go run ./cmd/backtest --file ./data/observations.jsonl
-
-# Audit your separately captured Chainlink 60-second TWAP ticks:
-go run ./cmd/oracle-audit --file ./chainlink-twap.jsonl \
+go run ./cmd/oracle-audit --file ./data/chainlink-twap-60s.jsonl \
   --start 2026-11-18T03:20:00Z --minutes 5 --official UP
 ```
 
-**Important:** `/cmd/oracle-audit` accepts only JSON lines like `{"time":"2026-11-18T03:20:00Z","price":94201.45,"source":"chainlink-twap-60s"}`. Those numbers are illustrative schema samples, **not observed Chainlink prices**. Exact window-edge ticks and the exact source label are required; if missing, it refuses to determine a direction. The CLI is an **independent comparison tool**, not an oracle downloader. Direct authenticated Chainlink/PolyBolt streaming is **not yet implemented**.
+Tests cover masked websocket handshake and PING/PONG, canonical/legacy book events, price changes, stale/out-of-order data, market rotation, trade queue, invalid provider, PolyBolt sequence gaps, ledger durability, corrupted ledger fail-closed, restart recovery, official reconciliation idempotency, and conflicting Chainlink/Gamma outcomes. Browser UI tested at 1440px desktop and 390px mobile widths using locally served **synthetic** API data; no JavaScript errors or horizontal overflow. Demo does **not** prove profitability.
 
-A macOS user may double-click `start-demo-mac.command` or `start-live-paper-mac.command`. To use a different port, set `PORT=8081`.
+### Not yet proven / next verification
 
-## Strategy and safety
+1. **Production market connectivity unverified:** sandbox DNS cannot reach Gamma, CLOB, Binance, Coinbase or PolyBolt. No actual continuous production stream was obtained in this session. The binary requires a networked machine and real credentials for Chainlink. The changing 2026 Polymarket protocol may require further implementation adjustments.
+2. **No cloud deployment:** this v0.3.0 revision has not yet been confirmed on GitHub or Railway/Vercel service deployed. Thus there is NO validated public URL.
+3. **No real maker fills or market-maker profit:** queue research is not a true posted-order execution model. Precise order queue position, cancellation priority, adverse selection, inventory, API latency and maker rebates remain to validate.
+4. **Not a 7–14 day real-market paper experiment:** no statistically supported win rate/expectancy or verified profitability. No wallets, real orders or live trading have been implemented.
+5. For reliable multi-instance or long-term storage, upgrade the single-process JSONL/atomic-file store to managed Postgres/SQLite WAL with backup and migrations, add network metrics, and conduct a 7–14 day forward paper trial before discussing money.
 
-- Spot momentum `100 × (BTC_now/BTC_30_seconds_ago − 1)`, verified source consistency.
-- Semivariance skew `(sum(positive log returns²) − sum(negative log returns²)) / sum(all squared log returns)` on a 60-second window.
-- Combine thresholds: default ±0.02% momentum plus ±0.20 skew. Silence or gaps in spot feed stop new trades.
-- Fetch Gamma events for current `btc-updown-5m-<epoch>` and `btc-updown-15m-<epoch>` markets and map Up/Down to token ID by outcome name. Confirm CLOB `/book` quotes at current executable best ask/bid; reject quotes with stale/missing timestamps (>12s old), crossed books, unavailable spot or insufficient displayed size.
-- Simulated taker position: starting $1,000; $20 per entry; ≤$80 allocated; ≤$30 daily observed loss; ≤35 daily entries; 35s spacing; don't enter within 65s of market close. A **net ≥1%** gain after simulated fees and slippage closes the position; -5% triggers a simulated stop if executable bid depth exists. Open positions nearing expiry attempt to exit. These are assumptions, not guarantees of tradability.
-- If an entry cannot exit before expiry, show `PENDING_RESOLUTION` with **zero conservative valuation** until an official published market result can be checked. Missing/ambiguous results **do not** create a win, loss payout or fictional settlement.
-- Confirm a closed Polymarket Gamma market has a matching slug + condition ID + exact binary outcome prices (1,0). Reconcile with `SETTLED` **once only**. Repeated messages cannot inflate the balance. This trusts Gamma's published resolved outcome, **not** independent verification of the underlying Chainlink TWAP.
-- **Maker research only:** create a buy/sell quote idea for the signal-aligned outcome using the actual CLOB tick size; reject crossed, tight or near-expiry books. There is no market-order submission, queue simulation, position inventory enforcement, or maker fill booking. A proposed sell quote may require owning shares first. Do not interpret it as realized spread or maker rebates.
-
-## Fees — important November 2026 policy change
-
-Official Polymarket BTC 5m/15m DeFi taker fee is modeled *per share* as:
-
-`fee = shares × coefficient × price × (1 − price)`
-
-- Through **2026-11-20 23:59 UTC** (exclusive): coefficient **0.07**.
-- From **2026-11-20 23:59 UTC**: coefficient **0.05**.
-- Maker platform fee assumed zero; maker rebates / taker rebates conservatively **not counted**.
-- `Config.FeeBps` / JSON `assumed_fee_bps_per_fill` is an **additional conservative cost reserve** (new default 25bps applied to notional per fill), not the Polymarket fee itself. Old saved v0.1 ledgers that included 100bps keep that same extra reserve rather than silently rewriting historical cost assumptions.
-- The default fixed price slippage remains 0.002 share price each way. Fees and assumptions can still differ from actual execution and dynamic market-level parameters.
-
-References: [Polymarket trading fees](https://docs.polymarket.com/trading/fees), [fee & rebate changes effective Nov 20](https://docs.polymarket.com/programs/fee-and-rebate-changes-november-2026), [resolution source](https://docs.polymarket.com/concepts/resolution).
-
-## API / Dashboard
-
-- `/` — responsive RWD Chinese dashboard, visibly labeled `SYNTHETIC DEMO` or `LIVE DATA / PAPER TRADING`.
-- `/health` — liveness, **not** proof that market feeds are healthy.
-- `/api/state` — snapshot including fee coefficient and **non-executable maker_quotes**.
-- `/api/export.csv` — taker paper positions and official-result reconciliations.
-- `/api/observations.jsonl` — raw observations and sampled public market quotes.
-
-Persistent files reside under `./data` (or `--data-dir`), and demos always use `./data/demo`; avoid committing them to Git. Paper snapshots are written via atomic rename. Observations append to JSONL. A `PENDING_RESOLUTION` position generated in **v0.1** lacks a condition ID, so v0.2 will **not auto-settle it**; it must be reconciled with separately verified source identifiers rather than trusting a guess.
-
-## Deployment and remaining work
-
-Run the Go service on an always-on container (Dockerfile/Railway provided) with a **persistent disk/volume** and **HTTPS access control**. For a publicly reachable Railway deployment set `DASHBOARD_USER` and `DASHBOARD_PASSWORD` via platform secret environment variables **before launch**; otherwise Railway startup refuses to serve a live paper dashboard. Protect raw observations and portfolio history. This build has **not** been verified against the real public market endpoints because the local build environment has no outbound DNS. Do not publish live earnings or connect a wallet without additional tests.
-
-Still open:
-
-1. Validate actual Gamma/CLOB/BTC schema and access from a networked environment; test market switching, API downtime and reconnect. The late-November **PolyBolt Chainlink API key / provider requirement** also needs implementation and authorized credentials to independently capture Chainlink 60s TWAP readings.
-2. Add reliable market WebSockets, orderbook event sequencing, queue-aware maker fill simulation, maker inventory controls, and realized fill attribution; only then measure maker performance.
-3. Replace JSONL with durable database, log rotation and alerting; test crash/restart and 7–14 days of real-market paper observations.
-4. Walk-forward backtest with realistic market outcomes, sharp-cost fee schedule, slippage by available depth and out-of-sample validation. No real-money trading until explicit human approval, eligibility verification and robust safeguards.
-
-**Live network status: not verified. Cloud deployment: not performed. True profitability: unknown.**
-
-## QA Screenshots (synthetic demo only)
-
-Synthetic dashboard screenshots are included in the downloadable v0.2.0 release ZIP from the development chat; image files are not tracked in this source repository. The screenshots do not show real trading results.
+Synthetic screenshots in `docs/dashboard-v0.3.0-synthetic.png` and `docs/mobile-v0.3.0-synthetic.png`. Never label them live trading or earnings proof.
