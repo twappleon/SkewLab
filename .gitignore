@@ -1,0 +1,6 @@
+/data/
+/testdata/
+/skewbot
+*.log
+*.zip
+.DS_Store
