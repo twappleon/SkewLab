@@ -1,3 +1,11 @@
+# Safety update v0.7.1 — stop new paper entries pending positive-edge validation
+
+On 2026-11-18, the first four completed paper positions lost $38.26, with 3 simulated stop-loss closes exceeding the nominal 5% trigger. A no-movement 50c/50c contract round-trip loses ~7.97% under the app's fee/slippage buffer (0.07 per-share taker coefficient, 0.002 simulated slippage per side, 25 bps buffer per fill). This alone can trigger the -5% stop within four seconds; the momentum+semivariance signal cannot be treated as a calibrated probability estimate.
+
+New *live-data paper entries* are disabled by default and require deliberate `PAPER_ENTRIES_ENABLED=1`. Existing paper exits, expiry reconciliation, monitoring, and Telegram reports continue. The engine also rejects entries whose immediate cost-aware round-trip loss equals or exceeds the configured stop-loss threshold, or whose visible bid-side depth cannot support hypothetical exit size. This is only a necessary rejection test; it does not prove positive expected value. Historical ledger losses are not altered.
+
+The Railway emergency setting `MIN_MOMENTUM_PCT=999` remains a second independent pause until the strategy is reviewed. **Do not re-enable entries yet.** There are no real orders or wallet credentials.
+
 # SkewLab — Polymarket BTC Quant v0.7.0
 
 ## Market-window performance diagnosis (v0.6.0)

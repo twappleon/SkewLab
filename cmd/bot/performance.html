@@ -10,6 +10,7 @@ table{border-collapse:collapse;width:100%;min-width:540px}th,td{padding:11px 14p
 #status{margin-top:14px}a{color:var(--accent)}@media(max-width:730px){main{padding:20px 15px 50px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{padding:17px}.value{font-size:1.5rem}}@media(max-width:390px){.grid{grid-template-columns:1fr}}
 </style></head><body><main><header><div class="brand">SkewLab / BTC Quant</div><span class="tag">PAPER ONLY · 不涉及真實資金</span></header>
 <h1>模擬交易績效</h1><p>免密碼查看彙總數據。每 15 秒更新一次；只公開彙總績效，私人交易紀錄、原始行情及管理資料不公開。</p>
+<div class="foot" id="entry-pause" role="status" style="border-color:#c5a067;color:#ffd8a3">安全檢查：新模擬開倉暫停，監控仍持續。</div>
 <div class="grid">
 <section class="tile"><div class="label">模擬帳戶淨值</div><div class="value" id="equity">—</div><div class="explain">以 US$1,000 起始，含未實現損益</div></section>
 <section class="tile"><div class="label">累計已實現淨損益</div><div class="value" id="pnl">—</div><div class="explain">已平倉及官方結算的模擬結果</div></section>
@@ -46,6 +47,9 @@ const money=x=>Number.isFinite(x)?new Intl.NumberFormat('en-US',{style:'currency
 const pct=x=>Number.isFinite(x)?(x>=0?'+':'')+x.toFixed(2)+'%':'—';
 function paint(id,n,fmt){const e=$(id);e.textContent=fmt(n);e.classList.remove('green','red');if(Number.isFinite(n))e.classList.add(n<0?'red':'green')}
 function performance(d){
+ const pause=$('entry-pause');
+ pause.textContent=d.paper_entries_enabled?'新模擬開倉已啟用（非獲利保證）':(d.entry_pause_reason||'新模擬開倉暫停，研究資料持續累積');
+ pause.style.borderColor=d.paper_entries_enabled?'#345b53':'#c5a067';
  const a=d.analytics||{}, p7=a.last_7_days||{}, p14=a.last_14_days||{};
  paint('net7',p7.net_pnl_usd,money);paint('expectancy',p14.average_net_usd,money);
  $('profitfactor').textContent=Number.isFinite(p14.profit_factor)?p14.profit_factor.toFixed(2):'—';

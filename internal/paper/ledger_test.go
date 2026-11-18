@@ -11,6 +11,7 @@ func TestPaperEntryExitAndFees(t *testing.T) {
 	now := time.Unix(1800000000, 0)
 	c := DefaultConfig()
 	c.CooldownSeconds = 0
+	c.StopLossPct = 15 // isolate exit mechanics from the new cost gate
 	l := New(c)
 	m := polymarket.Market{Slug: "test", End: now.Add(4 * time.Minute), Active: true, UpToken: "up", DownToken: "down", Up: polymarket.Quote{Bid: .47, Ask: .48, AskDepth: 1000, BidDepth: 1000}}
 	s := strategy.Result{Direction: "UP", Ready: true}
@@ -45,6 +46,7 @@ func TestSettlementIdempotenceAndPendingConservativeValuation(t *testing.T) {
 	now := time.Unix(1800000000, 0)
 	c := DefaultConfig()
 	c.CooldownSeconds = 0
+	c.StopLossPct = 15 // isolate exit mechanics from the new cost gate
 	l := New(c)
 	m := polymarket.Market{Slug: "match", ConditionID: "0xabc", End: now.Add(90 * time.Second), Active: true, UpToken: "up", DownToken: "down", Up: polymarket.Quote{Bid: .49, Ask: .50, BidDepth: 200, AskDepth: 200}}
 	sig := strategy.Result{Ready: true, Direction: "UP"}

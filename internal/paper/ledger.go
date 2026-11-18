@@ -212,6 +212,18 @@ func (l *Ledger) Evaluate(m polymarket.Market, s strategy.Result, now time.Time)
 	if q.AskDepth < math.Max(qty, l.Config.MinDepthShares) {
 		return messages
 	}
+	// Prevent cost-only stop-loss churn: even an unchanged bid/ask can
+	// generate a loss past the stop after round-trip taker fees and slippage.
+	// A successful cost gate is NOT evidence of a statistical trading edge.
+	if q.Bid <= 0 || q.BidDepth < qty || l.Config.StopLossPct <= 0 {
+		return messages
+	}
+	exitPx := math.Max(0.001, q.Bid-l.Config.SlippagePrice)
+	sameBookProceeds := fees.BufferedProceeds(qty, exitPx, l.Config.FeeBps, now)
+	frictionPct := 100 * (l.Config.OrderUSD-sameBookProceeds) / l.Config.OrderUSD
+	if math.IsNaN(frictionPct) || math.IsInf(frictionPct, 0) || frictionPct >= l.Config.StopLossPct {
+		return messages
+	}
 	if l.Cash < l.Config.OrderUSD {
 		return messages
 	}

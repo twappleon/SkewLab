@@ -208,7 +208,12 @@ func (a *App) cycle(ctx context.Context) {
 				}
 				actions := []string{}
 				if a.persistError == "" && a.oracleConflict == "" {
-					actions = a.ledger.Evaluate(m, a.sig, now)
+					entrySignal := a.sig
+					if !a.demo && !paperEntriesEnabled() {
+						// Continue closing existing positions while pausing all new entries.
+						entrySignal.Direction = "WAIT"
+					}
+					actions = a.ledger.Evaluate(m, entrySignal, now)
 				}
 				for _, action := range actions {
 					a.events = append([]string{now.Format(time.RFC3339) + " " + action}, a.events...)
@@ -537,8 +542,12 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
 		Telegram            notify.Status       `json:"telegram_notifications"`
-	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
+	}{mode(a.demo), "0.7.1", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
 }
+// Read-only feeds, historical reconciliation and existing-position exits
+// continue while new live-data paper entries remain explicitly disabled.
+func paperEntriesEnabled() bool { return os.Getenv("PAPER_ENTRIES_ENABLED") == "1" }
+
 func mode(demo bool) string {
 	if demo {
 		return "SYNTHETIC DEMO"
@@ -610,10 +619,16 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 		Analytics         analytics.Summary          `json:"analytics"`
 		MarketWindows     []analytics.MarketWindow   `json:"market_windows"`
 		RootCauses        analytics.RootCauseSummary `json:"root_causes"`
+		PaperEntriesEnabled bool `json:"paper_entries_enabled"`
+		EntryPauseReason string `json:"entry_pause_reason,omitempty"`
 	}{
-		mode(a.demo), "0.7.0", now, a.lastBTC.Time, fresh,
+		mode(a.demo), "0.7.1", now, a.lastBTC.Time, fresh,
 		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
 		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
+		a.demo || paperEntriesEnabled(), func() string {
+			if a.demo || paperEntriesEnabled() { return "" }
+			return "安全暫停：新模擬開倉已關閉，持續收集行情並管理既有持倉"
+		}(),
 	})
 }
 
@@ -756,6 +771,9 @@ func main() {
 			}
 		}
 	}()
+	if !*demo && !paperEntriesEnabled() {
+		log.Print("PAPER SAFETY PAUSE: new entries disabled; market data and existing positions continue")
+	}
 	if !*demo && os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DASHBOARD_PASSWORD") == "" {
 		log.Fatal("Set DASHBOARD_PASSWORD before public Railway deployment; live paper dashboard is private")
 	}
@@ -763,7 +781,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.7.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v0.7.1 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
