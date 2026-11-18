@@ -1,3 +1,7 @@
+# SkewLab v1.4.0 — Five-round independent research validation
+
+Five sequential research-only development rounds: observed sample integrity, official outcome lag, time-causal paired baseline and day-block uncertainty, modeled cost stress, and a fail-closed verdict. The public `GET /api/study-review` exposes aggregates only; private raw archives stay authenticated. All original paper-entry safety pauses, ledger data, and Telegram configuration remain unchanged. See `docs/V1_4_FIVE_ROUND_REVIEW.md`.
+
 # SkewLab v1.3.0 — Cost-aware prospective shadow strategies (paper entries paused)
 
 This release adds a read-only time-causal shadow proposal and matched market baseline comparison, with published-prior cohort labels, Wilson 95% lower bound, modeled cost, liquidity and spread gates. Public `/api/performance` returns aggregate `shadow_study`; no new trading permission, portfolio reset or real orders. Requires 100 earlier same-cohort outcomes and 30 subsequent prospective results for research review only. Full caveats in [docs/V1_3_SHADOW_GATE.md](docs/V1_3_SHADOW_GATE.md).

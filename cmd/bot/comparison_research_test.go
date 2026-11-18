@@ -17,7 +17,7 @@ func TestComparisonPrivateAndPublicAggregate(t *testing.T){
  b,e:=io.ReadAll(rsp.Body);rsp.Body.Close();if e!=nil{t.Fatal(e)}
  if rsp.StatusCode!=200||strings.Contains(string(b),"private-condition")||strings.Contains(string(b),"private-btc-market"){t.Fatalf("public private fields exposed: %d %s",rsp.StatusCode,b)}
  var out struct{Version string `json:"version"`;Comparison struct{Total int `json:"total"`;TradingAuthorized bool `json:"trading_authorized"`} `json:"strategy_comparison"`}
- if e=json.Unmarshal(b,&out);e!=nil||out.Version!="1.3.0"||out.Comparison.Total!=1||out.Comparison.TradingAuthorized{t.Fatalf("bad public study summary: %+v %v",out,e)}
+ if e=json.Unmarshal(b,&out);e!=nil||out.Version!="1.4.0"||out.Comparison.Total!=1||out.Comparison.TradingAuthorized{t.Fatalf("bad public study summary: %+v %v",out,e)}
  other,e:=http.Get(server.URL+"/api/strategy-comparison");if e!=nil{t.Fatal(e)};other.Body.Close();if other.StatusCode!=401{t.Fatalf("private research unprotected: %d",other.StatusCode)}
  csv,e:=http.Get(server.URL+"/api/export.csv");if e!=nil{t.Fatal(e)};csv.Body.Close();if csv.StatusCode!=401{t.Fatalf("private CSV unprotected: %d",csv.StatusCode)}
 }
