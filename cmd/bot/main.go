@@ -795,7 +795,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.9.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v1.0.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
