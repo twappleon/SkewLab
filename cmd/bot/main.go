@@ -641,7 +641,7 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 		PaperEntriesEnabled bool `json:"paper_entries_enabled"`
 		EntryPauseReason string `json:"entry_pause_reason,omitempty"`
 	}{
-		mode(a.demo), "1.2.0", now, a.lastBTC.Time, fresh,
+		mode(a.demo), "1.3.0", now, a.lastBTC.Time, fresh,
 		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
 		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, a.edge.Status(), a.edge.AssessQuality(now), analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
 		a.comparison.Summary(now), a.comparison.Quality(now), experiment.EvaluateShadow(a.comparison.Snapshot(), now), a.demo || paperEntriesEnabled(), func() string {

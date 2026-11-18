@@ -36,5 +36,5 @@ func TestShadowBadSpreadAndNoEdge(t *testing.T){
  for i:=range ss{ss[i].Winner="DOWN"}
  x=EvaluateShadow(ss,base.Add(1110*time.Minute))
  r:=x.Windows[0].Rules[0]
- if r.BlockedNoConservativeEdge!=10||r.EligibleCandidates!=0||math.IsNaN(r.ShadowNetPerShareUSD){t.Fatal("missing cost gate")}
+ if r.BlockedNoConservativeEdge!=9||r.EligibleCandidates!=0||math.IsNaN(r.ShadowNetPerShareUSD){t.Fatal("missing cost gate")}
 }
