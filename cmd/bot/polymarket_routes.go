@@ -95,7 +95,14 @@ func registerPolyRoutes(mux *http.ServeMux,s *polyState){
  mux.HandleFunc("/api/polymarket",func(w http.ResponseWriter,r *http.Request){
   if r.Method!="GET"{http.Error(w,"method not allowed",405);return}
   w.Header().Set("Content-Type","application/json; charset=utf-8");w.Header().Set("Cache-Control","no-store")
-  _=json.NewEncoder(w).Encode(s.read())
+  // Public API must not expose internal upstream errors, token IDs or credentials.
+  snapshot:=s.read()
+  snapshot.Error=""
+  sanitized:=make([]polyCandidate,len(snapshot.Candidates))
+  copy(sanitized,snapshot.Candidates)
+  for i:=range sanitized {sanitized[i].Quote.TokenID=""}
+  snapshot.Candidates=sanitized
+  _=json.NewEncoder(w).Encode(snapshot)
  })
  mux.HandleFunc("/polymarket",func(w http.ResponseWriter,r *http.Request){
   if r.Method!="GET"{http.Error(w,"method not allowed",405);return}
