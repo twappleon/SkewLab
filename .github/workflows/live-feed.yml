@@ -1,0 +1,50 @@
+name: Read-only Polymarket live-feed verification
+
+# Separate from unit-test CI: a network failure is not a code-test failure.
+# This job uses the trusted owner's private Mac and NEVER submits orders.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cmd/feedcheck/**'
+      - 'internal/stream/**'
+      - '.github/workflows/live-feed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skewlab-live-feed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-readonly:
+    name: Gamma / CLOB / BTC / WS (public read-only)
+    runs-on: [self-hosted, macOS, ARM64, skewlab-mac]
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Probe public feeds; do not use any private credentials
+        id: probe
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/feedcheck --timeout 45s --output "$RUNNER_TEMP/skewlab-feedcheck.json"
+      - name: Upload diagnostics even if public providers are unreachable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skewlab-feedcheck-${{ github.run_id }}
+          path: ${{ runner.temp }}/skewlab-feedcheck.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail honestly if live API handshake or books were not confirmed
+        if: steps.probe.outcome == 'failure'
+        run: exit 1

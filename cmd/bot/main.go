@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -385,7 +386,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		ChainlinkFeed       oracle.PolyStatus   `json:"chainlink_feed"`
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
-	}{mode(a.demo), "0.3.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates()})
+	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates()})
 }
 func mode(demo bool) string {
 	if demo {
@@ -464,6 +465,34 @@ func envFloat(key string, def float64) float64 {
 	}
 	return def
 }
+
+// localFirstListenAddr prevents unauthenticated portfolio and tick archives from
+// being reachable over LAN/WAN merely because the bot was started on a Mac.
+// Non-loopback serving is permitted only behind a trusted HTTPS reverse proxy
+// (or Railway, where HTTPS terminates at the edge) with dashboard authentication.
+func localFirstListenAddr(host, port string, railway, passwordSet, trustedProxy bool) (string, error) {
+	if port == "" {
+		port = "8080"
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 1 || n > 65535 {
+		return "", fmt.Errorf("invalid PORT %q", port)
+	}
+	if host == "" {
+		if railway {
+			host = "0.0.0.0"
+		} else {
+			host = "127.0.0.1"
+		}
+	}
+	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
+		if !passwordSet || !(railway || trustedProxy) {
+			return "", fmt.Errorf("remote dashboard bind blocked: set DASHBOARD_PASSWORD and TRUSTED_REVERSE_PROXY=1 only behind HTTPS, or run with BIND_ADDR=127.0.0.1")
+		}
+	}
+	return net.JoinHostPort(host, port), nil
+}
+
 func main() {
 	demo := flag.Bool("demo", false, "show clearly labeled synthetic BTC and order books; NEVER real money")
 	dataDir := flag.String("data-dir", "./data", "directory for local ledger and observation logs")
@@ -499,12 +528,12 @@ func main() {
 	if !*demo && os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DASHBOARD_PASSWORD") == "" {
 		log.Fatal("Set DASHBOARD_PASSWORD before public Railway deployment; live paper dashboard is private")
 	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	listenAddr, err := localFirstListenAddr(os.Getenv("BIND_ADDR"), os.Getenv("PORT"), os.Getenv("RAILWAY_ENVIRONMENT") != "", os.Getenv("DASHBOARD_PASSWORD") != "", os.Getenv("TRUSTED_REVERSE_PROXY") == "1")
+	if err != nil {
+		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.3.0 (%s), http://localhost:%s", mode(*demo), port)
-	srv := &http.Server{Addr: ":" + port, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
+	log.Printf("Polymarket Skew Bot v0.4.0 (%s), http://%s", mode(*demo), listenAddr)
+	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, done := context.WithTimeout(context.Background(), 6*time.Second)

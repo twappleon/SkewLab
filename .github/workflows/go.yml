@@ -1,6 +1,7 @@
 name: Go unit and integration checks (Mac self-hosted)
 
-# Personal Mac runners must never execute untrusted pull-request code.
+# Only trusted main-branch pushes and explicit owner-triggered runs can
+# execute on the owner's personal Mac. Do NOT run fork PRs on a personal runner.
 on:
   push:
     branches: [main]
@@ -10,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: skewlab-go-main
+  group: skewlab-go-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,10 +39,12 @@ jobs:
         run: go test -race ./...
       - name: Go vet
         run: go vet ./...
-      - name: Build bot, backtest and oracle audit
+      - name: Build bot, backtest, oracle audit and public feedcheck
         shell: bash
         run: |
           set -euo pipefail
           go build -o "$RUNNER_TEMP/skewlab-bot" ./cmd/bot
           go build -o "$RUNNER_TEMP/skewlab-backtest" ./cmd/backtest
           go build -o "$RUNNER_TEMP/skewlab-oracle-audit" ./cmd/oracle-audit
+          go build -o "$RUNNER_TEMP/skewlab-feedcheck" ./cmd/feedcheck
+          go build -o "$RUNNER_TEMP/skewlab-coverage" ./cmd/coverage

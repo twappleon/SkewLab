@@ -1,6 +1,16 @@
-# SkewLab — Polymarket BTC Quant v0.3.0
+# SkewLab — Polymarket BTC Quant v0.4.0
 
 **Status: locally tested, paper-only. No real orders, no wallets, no validated live-market profitability.** The project extends v0.2.0: 30-second BTC spot momentum, 60-second up/down semivariance, 5/15-minute Polymarket market discovery, conservative taker paper execution, official Gamma result reconciliation, date-aware taker fees, and authenticated RWD monitoring. v0.3.0 adds public CLOB WebSocket ingestion, *optional* authenticated PolyBolt Chainlink 60s TWAP capture, independent disagreement interlock, passive maker-queue research and crash-aware persistence.
+
+## New in v0.4.0: first live-market evidence, safely
+
+- Standalone `go run ./cmd/feedcheck --timeout 45s` tests real public BTC/Gamma/CLOB REST and **CLOB WebSocket** freshness without a wallet or orders. The command returns failure unless a real Up+Down market pair is observed. A separate Mac GitHub Actions job produces downloadable diagnostic JSON artifacts; no fabricated live successes.
+- Local Dashboard now binds to `127.0.0.1:8080` by default, protecting paper trading records from unintended LAN access. A non-loopback listener requires authenticated access and HTTPS reverse proxy termination (`TRUSTED_REVERSE_PROXY=1` or Railway). `BIND_ADDR` can override deliberately.
+- Optional Mac user launchd service at `scripts/install-paper-agent-macos.sh` runs the real-public-data **paper-only** bot on `127.0.0.1:8181` and persists to `~/Library/Application Support/SkewLab-paper/data` when explicitly installed on the owner's Mac. Does not modify existing OmniGaming runner.
+
+Local observation gap analysis: `go run ./cmd/coverage --glob "./data/observations.jsonl*"` (not a profit report).
+
+See [v0.4 live validation protocol](docs/V0_4_LIVE_VALIDATION.md).
 
 ## Run locally
 
