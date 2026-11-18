@@ -1,5 +1,12 @@
 # SkewLab — Polymarket BTC Quant v0.4.0
 
+## v0.5.0 — Seven and fourteen day paper performance
+
+The passwordless summary at / and /api/performance now reports 7-day closed-trade paper P&L, 14-day average net P&L per close, a profit factor when defined, and 14 days of local-date aggregate results. Open or unresolved positions never contribute to realized profit. Daily Telegram summaries include these read-only aggregates.
+
+These figures are hypothetical and sensitive to fee/slippage assumptions. Data quality warnings flag mismatched recorded closes and small sample sizes. The public API includes **no per-trade details**; /admin, /api/state, /api/export.csv and raw market archives remain Basic Auth protected. Keep DASHBOARD_PASSWORD set in Railway. See [methodology](docs/V0_5_PERFORMANCE.md).
+
+
 ## Passwordless read-only performance summary (v0.4.2)
 
 The root `/` and `/performance` now show only aggregate **paper-trading** metrics without a password. The read-only endpoint `/api/performance` exposes equity, realized paper P&L, return, win rate, drawdown, and position counts, but **not** individual trade IDs, market IDs, token IDs, or raw archives. Anyone with the public domain can read these aggregate metrics.

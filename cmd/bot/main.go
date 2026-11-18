@@ -21,7 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/twappleon/SkewLab/internal/fees"
+	"github.com/twappleon/SkewLab/internal/analytics"
+ "github.com/twappleon/SkewLab/internal/fees"
 	"github.com/twappleon/SkewLab/internal/maker"
 	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
@@ -299,12 +300,22 @@ func (a *App) alertRisk(now time.Time){
   a.alerts.Publish("risk:loss:"+now.UTC().Format("2006-01-02"),fmt.Sprintf("🚨 SkewLab 模擬每日虧損觸及限制\n估算損益：%.2f USD\n限制：%.2f USD\n風控限制新開倉。",pnl,a.ledger.Config.MaxDailyLossUSD))
  }
 }
-func (a *App) alertDailySummary(now time.Time){
- if a.demo||a.alerts==nil{return}
- local:=now.In(time.FixedZone("Phnom Penh",7*3600))
- if local.Hour()<9{return}
+func (a *App) alertDailySummary(now time.Time) {
+ if a.demo || a.alerts == nil {return}
+ local := now.In(time.FixedZone("Phnom Penh", 7*3600))
+ if local.Hour() < 9 {return}
  day:=local.Format("2006-01-02")
- a.alerts.Publish("daily:"+day,fmt.Sprintf("📋 SkewLab 每日模擬報告（%s 柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現損益：%+.2f USD\n已平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n未完成持倉：%d\n僅模擬，非可提領收益。",day,a.ledger.CurrentEquity(),a.ledger.RealizedPnL,a.ledger.TotalClosed,a.ledger.Wins,a.ledger.MaxDrawdownPct,a.ledger.OpenPositions()))
+ stats:=analytics.Calculate(a.ledger,now)
+ pf:="不適用（沒有虧損樣本）"
+ if stats.Last14Days.ProfitFactor!=nil{pf=fmt.Sprintf("%.2f",*stats.Last14Days.ProfitFactor)}
+ avg:="不適用"
+ if stats.Last14Days.AverageNetUSD!=nil{avg=fmt.Sprintf("%+.4f USD",*stats.Last14Days.AverageNetUSD)}
+ quality:="樣本不足，仍需驗證"
+ if !stats.DataComplete{quality="歷史交易資料不完整，需查核"}else if stats.SampleLevel=="research_sample"{quality="研究樣本，仍需樣本外驗證"}
+ msg:=fmt.Sprintf("📋 SkewLab 每日模擬報告（%s 柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現淨損益：%+.2f USD\n完成平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n近 7 天已實現損益：%+.2f USD（%d 筆）\n近 14 天平均每筆：%s\n近 14 天 Profit Factor：%s\n樣本狀態：%s\n未完成持倉：%d\n僅模擬，非可提領收益。",
+ day,a.ledger.CurrentEquity(),a.ledger.RealizedPnL,a.ledger.TotalClosed,a.ledger.Wins,a.ledger.MaxDrawdownPct,
+ stats.Last7Days.NetPnLUSD,stats.Last7Days.Closed,avg,pf,quality,a.ledger.OpenPositions())
+ a.alerts.Publish("daily:"+day,msg)
 }
 
 // Captured Chainlink values are stored separately from exchange spot ticks.
@@ -524,9 +535,10 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
         MaxDrawdownPct float64 `json:"max_drawdown_pct"`
         OpenPositions int `json:"open_positions"`
         PendingSettlement int `json:"pending_settlement"`
-    }{mode(a.demo),"0.4.2",now,a.lastBTC.Time,fresh,
+ Analytics analytics.Summary `json:"analytics"`
+    }{mode(a.demo),"0.5.0",now,a.lastBTC.Time,fresh,
       initial,equity,roi,l.RealizedPnL,l.TotalClosed,l.Wins,
-      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending})
+      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending,analytics.Calculate(l,now)})
 }
 
 func (a *App) handler() http.Handler {
@@ -658,7 +670,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.4.2 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v0.5.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
