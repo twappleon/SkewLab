@@ -1,5 +1,9 @@
 # SkewLab v1.0.0 — Research quality diagnostics
 
+## v1.2.0 — Fixed-time coverage and forward-only quality gate
+The public paper dashboard now reports separate 5m/15m theoretical capture coverage, missing fixed-time slots, settlement reconciliation rates based only on samples more than 30 minutes beyond market expiry, and per-rule *forward-only* performance. Unknown pre-first-capture intervals produce no percentage; the expected slot denominator includes service downtime and is not verified exchange uptime. Strictly previously resolved results are required for a prospective comparison. Full raw research and private CSV remain password-protected. Research never authorizes new paper or live orders; PAPER_ENTRIES_ENABLED remains disabled. See docs/V1_2_COVERAGE_FORWARD_GATE.md.
+
+
 New read-only 5m/15m research sample counters, resolved Gamma outcome backlog, invalid chronology checks, and cohort-size review. Full records remain password-protected and **paper entries remain paused**. See [research quality protocol](docs/V1_0_RESEARCH_QUALITY.md).
 
 # SkewLab v0.9.0 — research-only calibrated edge evidence

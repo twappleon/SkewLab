@@ -51,7 +51,7 @@ func TestDiagnosticsReadOnlyPublicAggregateAndProtectedAudit(t *testing.T) {
 			if err := json.Unmarshal(body, &got); err != nil {
 				t.Fatal(err)
 			}
-			if got.Version != "1.1.0" || got.RootCauses.CompletedTrades != 1 || got.RootCauses.StopThresholdBreaches != 1 || len(got.RootCauses.ByReasonMarket) != 1 {
+			if got.Version != "1.2.0" || got.RootCauses.CompletedTrades != 1 || got.RootCauses.StopThresholdBreaches != 1 || len(got.RootCauses.ByReasonMarket) != 1 {
 				t.Fatalf("public aggregates %+v", got)
 			}
 		}
