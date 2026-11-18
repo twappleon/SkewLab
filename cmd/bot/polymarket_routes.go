@@ -32,7 +32,7 @@ type polyCandidate struct {
  Quote polymarketv2.Quote `json:"clob_quote"`
  Decision string `json:"decision"`
  Reason string `json:"reason"`
- ConservativeEntryFeeUSD float64 `json:"conservative_entry_fee_usd"`
+ IllustrativeEntryFeeUSD float64 `json:"illustrative_entry_fee_usd"`
 }
 var polyResearchState = newPolyState()
 
@@ -62,7 +62,7 @@ func(s *polyState)scan(ctx context.Context)polySnapshot{
    book,e:=polymarketv2.FetchBook(bookCtx,nil,tokens[0]);cancel()
    if e!=nil{entry.Reason="CLOB unavailable (no synthetic fills)";break}
    entry.Quote=polymarketv2.Evaluate(book,time.Now().UTC(),5)
-   if entry.Quote.Executable{entry.ConservativeEntryFeeUSD=polymarketv2.Fee(5,entry.Quote.BuyVWAP,0.07)}
+   if entry.Quote.Executable{entry.IllustrativeEntryFeeUSD=polymarketv2.Fee(5/entry.Quote.BuyVWAP,entry.Quote.BuyVWAP,0.07)}
    if !entry.Quote.Executable{entry.Reason=entry.Quote.Reason}else{entry.Reason="visible depth only, no independent probability model evidence"}
    break
   }
