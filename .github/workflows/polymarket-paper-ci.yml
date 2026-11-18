@@ -1,0 +1,31 @@
+name: Polymarket read-only integration QA
+on:
+  pull_request:
+    paths:
+      - "internal/polymarketscan/**"
+      - "internal/polymarketv2/**"
+      - "cmd/bot/polymarket_routes.go"
+      - "cmd/bot/main.go"
+      - ".github/workflows/polymarket-paper-ci.yml"
+  push:
+    branches: [feat/polymarket-100-paper-scanner]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Unit tests
+        run: go test -race ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Build production SkewLab
+        run: go build ./cmd/bot
+      - name: Build research CLI
+        run: go build ./cmd/polymarket-scan
