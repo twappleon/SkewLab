@@ -23,6 +23,7 @@ import (
 
 	"github.com/twappleon/SkewLab/internal/fees"
 	"github.com/twappleon/SkewLab/internal/maker"
+	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
 	"github.com/twappleon/SkewLab/internal/paper"
 	"github.com/twappleon/SkewLab/internal/polymarket"
@@ -47,6 +48,11 @@ type App struct {
 	clob                *stream.Feed
 	chainlink           *oracle.PolyBolt
 	queue               *maker.QueueMonitor
+	alerts              *notify.Client
+	lastSignalAt        time.Time
+	lastSignalDirection string
+	feedBadSince        time.Time
+	feedDegraded        bool
 	persistError        string
 	oracleConflict      string
 	ticks               []strategy.Tick
@@ -162,6 +168,7 @@ func (a *App) cycle(ctx context.Context) {
 		}
 	}
 	a.mu.Lock()
+	if !a.demo { for _,p:=range a.ledger.Positions {if p.Status=="OPEN" && !now.Before(p.MarketEnd) {a.alerts.Publish("pending:"+p.ID,fmt.Sprintf("🧪 SkewLab 待結算\n市場：%s\n方向：%s\n等待官方結果，不預估收益。",p.Market,p.Side))}}}
 	// Use the completion time, not request start time, for freshness checks.
 	now = time.Now().UTC()
 	if t.Price > 0 {
@@ -178,6 +185,7 @@ func (a *App) cycle(ctx context.Context) {
 		a.ticks = a.ticks[first:]
 	}
 	a.sig = strategy.Calculate(a.ticks, now, a.minMomentum, a.minSkew)
+	a.alertDirection(now)
 	a.makerQuotes = nil
 	// Do not submit any paper orders when either BTC or the corresponding
 	// CLOB book is missing; previous quotes are never reused for execution.
@@ -196,6 +204,7 @@ func (a *App) cycle(ctx context.Context) {
 				}
 				for _, action := range actions {
 					a.events = append([]string{now.Format(time.RFC3339) + " " + action}, a.events...)
+					a.alertPaperAction(now,action)
 				}
 			} else {
 				if a.persistError == "" && a.oracleConflict == "" {
@@ -223,6 +232,10 @@ func (a *App) cycle(ctx context.Context) {
 		errors = append(errors, a.oracleConflict)
 	}
 	a.errorMessage = strings.Join(errors, "; ")
+	a.alertHealth(now,errors)
+	if a.persistError!=""{a.alerts.Publish("risk:disk:"+now.Format("2006-01-02"),"🚨 SkewLab 模擬交易已停止：持久化資料錯誤。")}
+	a.alertRisk(now)
+	a.alertDailySummary(now)
 	if t.Price > 0 {
 		a.saveObservation(Observation{Time: now, BTC: t.Price, Source: t.Source, Signal: a.sig, Markets: markets})
 	}
@@ -231,6 +244,67 @@ func (a *App) cycle(ctx context.Context) {
 	if !a.demo {
 		a.reconcile(ctx, now)
 	}
+}
+
+// Significant-only Telegram notifications. Never notify on each market tick.
+func (a *App) alertDirection(now time.Time){
+ if a.demo||a.alerts==nil{return}
+ direction:=a.sig.Direction
+ if direction=="WAIT"{a.lastSignalDirection="WAIT";return}
+ if !a.sig.Ready||direction==a.lastSignalDirection||now.Sub(a.lastSignalAt)<5*time.Minute{return}
+ a.lastSignalDirection=direction;a.lastSignalAt=now
+ a.alerts.Publish("signal:"+now.Truncate(5*time.Minute).Format(time.RFC3339)+":"+direction,
+ fmt.Sprintf("📊 SkewLab BTC 方向觀察訊號\n方向：%s\n30秒動量：%+.4f%%\n半方差偏度：%+.3f\n來源：%s\n僅供模擬研究，並非已成交。",direction,a.sig.MomentumPct,a.sig.Skew,a.lastBTC.Source))
+}
+func (a *App) alertPaperAction(now time.Time, action string){
+ if a.demo||a.alerts==nil{return}
+ for i:=len(a.ledger.Positions)-1;i>=0;i--{
+  p:=a.ledger.Positions[i]
+  if strings.HasPrefix(action,"PAPER BUY")&&p.Status=="OPEN"&&p.EntryTime.Equal(now){
+   a.alerts.Publish("buy:"+p.ID,fmt.Sprintf("🧪 SkewLab 模擬開倉\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬買價：%.4f\n非真實下單。",p.Market,p.Side,p.EntryCost,p.EntryPrice));return
+  }
+  if strings.HasPrefix(action,"PAPER SELL")&&p.Status=="CLOSED"&&p.ExitTime!=nil&&p.ExitTime.Equal(now){
+   title:="🧪 SkewLab 模擬平倉"
+   if p.Note=="net take profit"{title="✅ SkewLab 模擬止盈（淨收益達標）"}
+   if p.Note=="net stop loss"{title="🛑 SkewLab 模擬止損"}
+   a.alerts.Publish("sell:"+p.ID,fmt.Sprintf("%s\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬賣價：%.4f\n淨損益：%+.2f USD（%+.2f%%）\n原因：%s\n非真實下單。",title,p.Market,p.Side,p.EntryCost,p.ExitPrice,p.RealizedPnL,100*p.RealizedPnL/p.EntryCost,p.Note));return
+  }
+ }
+}
+func (a *App) alertHealth(now time.Time, errors []string){
+ if a.demo||a.alerts==nil{return}
+ if len(errors)>0{
+  if a.feedBadSince.IsZero(){a.feedBadSince=now}
+  if !a.feedDegraded&&now.Sub(a.feedBadSince)>=time.Minute{
+   a.feedDegraded=true
+   a.alerts.Publish("outage:"+now.Truncate(20*time.Minute).Format(time.RFC3339),"⚠️ SkewLab 行情異常超過 60 秒\n缺失行情不會觸發新模擬倉。請查看 Railway 日誌。")
+  }
+  return
+ }
+ a.feedBadSince=time.Time{}
+ if a.feedDegraded{
+  a.feedDegraded=false
+  a.alerts.Publish("recovery:"+now.Truncate(20*time.Minute).Format(time.RFC3339),"✅ SkewLab 行情資料已恢復。模擬運行持續，非實盤交易。")
+ }
+}
+func (a *App) alertRisk(now time.Time){
+ if a.demo||a.alerts==nil{return}
+ if a.oracleConflict!=""{a.alerts.Publish("risk:oracle:"+now.Format("2006-01-02"),"🚨 SkewLab 結算來源衝突：停止新模擬開倉，請查核 Chainlink/Gamma。")}
+ pnl:=0.0
+ for _,p:=range a.ledger.Positions{
+  if p.ExitTime!=nil&&p.ExitTime.UTC().Format("2006-01-02")==now.UTC().Format("2006-01-02"){pnl+=p.RealizedPnL}
+  if (p.Status=="OPEN"||p.Status=="PENDING_RESOLUTION")&&p.MarkPnL<0{pnl+=p.MarkPnL}
+ }
+ if pnl<=-a.ledger.Config.MaxDailyLossUSD{
+  a.alerts.Publish("risk:loss:"+now.UTC().Format("2006-01-02"),fmt.Sprintf("🚨 SkewLab 模擬每日虧損觸及限制\n估算損益：%.2f USD\n限制：%.2f USD\n風控限制新開倉。",pnl,a.ledger.Config.MaxDailyLossUSD))
+ }
+}
+func (a *App) alertDailySummary(now time.Time){
+ if a.demo||a.alerts==nil{return}
+ local:=now.In(time.FixedZone("Phnom Penh",7*3600))
+ if local.Hour()<9{return}
+ day:=local.Format("2006-01-02")
+ a.alerts.Publish("daily:"+day,fmt.Sprintf("📋 SkewLab 每日模擬報告（%s 柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現損益：%+.2f USD\n已平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n未完成持倉：%d\n僅模擬，非可提領收益。",day,a.ledger.CurrentEquity(),a.ledger.RealizedPnL,a.ledger.TotalClosed,a.ledger.Wins,a.ledger.MaxDrawdownPct,a.ledger.OpenPositions()))
 }
 
 // Captured Chainlink values are stored separately from exchange spot ticks.
@@ -350,6 +424,7 @@ func (a *App) reconcile(ctx context.Context, now time.Time) {
 			if len(a.events) > 16 {
 				a.events = a.events[:16]
 			}
+			for _,p:=range a.ledger.Positions {if p.Status=="SETTLED"&&p.ExitTime!=nil&&p.ExitTime.Equal(now)&&p.Market==slug {a.alerts.Publish("settled:"+p.ID,fmt.Sprintf("🧪 SkewLab 官方結果結算\n市場：%s\n方向：%s\n結果：%s\n模擬淨損益：%+.2f USD\nGamma 公開結果，非獨立 Chainlink 驗證。",slug,p.Side,settlement.Winner,p.RealizedPnL))}}
 			a.ledger.RecordEquity(now)
 			a.saveLedger()
 		}
@@ -386,7 +461,8 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		ChainlinkFeed       oracle.PolyStatus   `json:"chainlink_feed"`
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
-	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates()})
+		Telegram            notify.Status       `json:"telegram_notifications"`
+	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(),a.alerts.Status()})
 }
 func mode(demo bool) string {
 	if demo {
@@ -505,8 +581,10 @@ func main() {
 	}
 	poll := 3 * time.Second
 	a := NewApp(*dataDir, *demo, envFloat("MIN_MOMENTUM_PCT", 0.02), envFloat("MIN_SKEW", 0.20), poll)
+	if !*demo {a.alerts=notify.FromEnv(*dataDir)}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if a.alerts!=nil {go a.alerts.Run(ctx)}
 	if !*demo {
 		go a.clob.Run(ctx)
 		go a.chainlink.Run(ctx)

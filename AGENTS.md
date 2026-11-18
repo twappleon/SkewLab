@@ -35,3 +35,9 @@ go run ./cmd/backtest --file ./data/demo/observations.jsonl
 ```
 
 Report precisely which gates pass, which are blocked, and link the exact tested revision. If nothing changed, do not claim an update.
+
+## Telegram operational alerts
+- When the authorized owner configures the existing `@crytotradebot`, send *from* the bot to the authorized numeric Chat ID; never send to the bot username itself.
+- Never ask to paste tokens into chat or commit them to Git. Runtime secrets are `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` / `TELEGRAM_OWNER_ID`.
+- Only send real event notifications; no synthetic, every-tick or startup messages. Throttle signal and outage alerts. Distinguish simulated positions and Gamma settlement from real fills/independent oracle proof.
+- Keep alert delivery non-blocking to trading. Log sanitized failures, persist delivery IDs and do not count alerts as profitable trades. CI must use mock Telegram endpoints only.

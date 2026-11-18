@@ -4,7 +4,7 @@
 
 ## New in v0.4.0: first live-market evidence, safely
 
-- Standalone `go run ./cmd/feedcheck --timeout 45s` tests real public BTC/Gamma/CLOB REST and **CLOB WebSocket** freshness without a wallet or orders. The command returns failure unless a real Up+Down market pair is observed. A separate Mac GitHub Actions job prints structured JSON diagnostics in the Actions job log (Artifact storage quota is currently exhausted); no fabricated live successes. Binance/Coinbase can be regionally inaccessible; after first successful fallback the engine sticks to Kraken or Bitstamp spot until a venue failure, and clears momentum history on source changes.
+- Standalone `go run ./cmd/feedcheck --timeout 45s` tests real public BTC/Gamma/CLOB REST and **CLOB WebSocket** freshness without a wallet or orders. The command returns failure unless a real Up+Down market pair is observed. A separate Mac GitHub Actions job produces downloadable diagnostic JSON artifacts; no fabricated live successes.
 - Local Dashboard now binds to `127.0.0.1:8080` by default, protecting paper trading records from unintended LAN access. A non-loopback listener requires authenticated access and HTTPS reverse proxy termination (`TRUSTED_REVERSE_PROXY=1` or Railway). `BIND_ADDR` can override deliberately.
 - Optional Mac user launchd service at `scripts/install-paper-agent-macos.sh` runs the real-public-data **paper-only** bot on `127.0.0.1:8181` and persists to `~/Library/Application Support/SkewLab-paper/data` when explicitly installed on the owner's Mac. Does not modify existing OmniGaming runner.
 
@@ -96,3 +96,27 @@ Tests cover masked websocket handshake and PING/PONG, canonical/legacy book even
 5. For reliable multi-instance or long-term storage, upgrade the single-process JSONL/atomic-file store to managed Postgres/SQLite WAL with backup and migrations, add network metrics, and conduct a 7–14 day forward paper trial before discussing money.
 
 Synthetic screenshots in `docs/dashboard-v0.3.0-synthetic.png` and `docs/mobile-v0.3.0-synthetic.png`. Never label them live trading or earnings proof.
+
+## Telegram alerts — @crytotradebot (paper-only)
+
+SkewLab can **send from the already owned** `@crytotradebot` Telegram bot to its authorized owner chat, not *to* the bot username. The recipient must first open the bot and press Start; for private chats use the **numeric Chat ID**, not the private account's @username. Never use `@crytotradebot` as `TELEGRAM_CHAT_ID`.
+
+Set the following environment variables in the SkewLab Railway **service variables**, not the repository, GitHub Actions or chat:
+
+- `TELEGRAM_BOT_TOKEN` — reuse the existing `@crytotradebot` bot token securely; obtain it from your secrets manager / BotFather if necessary, never paste it into a conversation.
+- `TELEGRAM_CHAT_ID` — authorized owner or private group numeric chat ID; if absent, `TELEGRAM_OWNER_ID` is supported for compatibility with the older trading bot.
+- `TELEGRAM_TARGET_USERNAME` — optional fallback for a **public channel/supergroup** where the bot has appropriate permissions; this does not reliably work with ordinary private user handles.
+
+No token + numeric Chat ID means Telegram remains disabled, **but paper trading continues**. Synthetic demo and CI never dispatch Telegram messages. If the bot has not been started by its target user, Telegram may return HTTP 403; the status in `/api/state` (`telegram_notifications`) and runtime logs expose only sanitized error codes, never credentials.
+
+Messages are sent only for significant events: new aligned momentum/semivariance direction (throttled 5 minutes), hypothetical paper entry/exit and net +1% take-profit or stop-loss, pending settlement and Gamma settlement, sustained public-feed outage and recovery, daily loss cutoff, oracle conflict, disk failure, and a daily 09:00 (Phnom Penh) paper account summary. **No per-tick notifications, automatic startup tests or real orders.** Successful sends are journaled as `telegram-delivered.jsonl` on the persistent volume; commit IDs based on position ID reduce duplicate alerts after restarts. Delivery is best effort: if Telegram is unavailable, the bounded queue protects trading, and individual event messages may be lost. Keep only one Railway replica to avoid duplicate strategy runs.
+
+To verify the recipient manually **after configuring secrets**:
+
+```bash
+go run ./cmd/telegram-test                     # no message sent
+# Only when ready to send one explicit test message:
+go run ./cmd/telegram-test --send
+```
+
+Telegram setup is **code-complete only** until the SkewLab Railway service exists and secrets are configured there. Do not claim messages were delivered merely because CI passed.
