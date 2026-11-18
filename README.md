@@ -1,3 +1,7 @@
+# SkewLab v1.5.0 — Five-round performance repair (paper entries PAUSED)
+
+The five implemented rounds: (1) round-trip friction and break-even hurdles, (2) full-stake daily risk reservation, (3) forward-only incremental alpha versus the contemporaneous market-price baseline, (4) UTC-day concentration, (5) fail-closed summary blockers. No sample result authorizes trading. See [v1.5 research and safety protocol](docs/V1_5_FIVE_ROUND_PERFORMANCE.md). The original loss ledger and Telegram setup remain intact.
+
 # SkewLab v1.4.0 — Five-round independent research validation
 
 Five sequential research-only development rounds: observed sample integrity, official outcome lag, time-causal paired baseline and day-block uncertainty, modeled cost stress, and a fail-closed verdict. The public `GET /api/study-review` exposes aggregates only; private raw archives stay authenticated. All original paper-entry safety pauses, ledger data, and Telegram configuration remain unchanged. See `docs/V1_4_FIVE_ROUND_REVIEW.md`.

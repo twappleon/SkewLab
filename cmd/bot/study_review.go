@@ -16,6 +16,7 @@ func (a *App) studyReviewPublic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Study-Review-Version", "1.5.0")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	review := validation.BuildReview(a.comparison.Snapshot(), time.Now().UTC())
