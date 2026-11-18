@@ -33,6 +33,8 @@ type polyCandidate struct {
  Decision string `json:"decision"`
  Reason string `json:"reason"`
 }
+var polyResearchState = newPolyState()
+
 type polyState struct{mu sync.RWMutex;latest polySnapshot}
 func newPolyState()*polyState{return &polyState{latest:polySnapshot{Mode:"READ_ONLY_PAPER_RESEARCH",BankrollUSD:100,MaxPositionUSD:5,MaxExposureUSD:30,DailyLossUSD:2,Candidates:[]polyCandidate{},Note:"No independent calibrated probabilities, no fills, no realized returns. Real trading disabled."}}}
 func(s *polyState)read()polySnapshot{s.mu.RLock();defer s.mu.RUnlock();return s.latest}
