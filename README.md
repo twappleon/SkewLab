@@ -1,27 +1,21 @@
-# SkewLab — Polymarket BTC Quant v0.6.0
+# SkewLab — Polymarket BTC Quant v0.7.0
 
-## v0.5.0 — Seven and fourteen day paper performance
+## Market-window performance diagnosis (v0.6.0)
 
-The passwordless summary at / and /api/performance now reports 7-day closed-trade paper P&L, 14-day average net P&L per close, a profit factor when defined, and 14 days of local-date aggregate results. Open or unresolved positions never contribute to realized profit. Daily Telegram summaries include these read-only aggregates.
+The passwordless public aggregate endpoint now includes `market_windows` with 5m, 15m and unknown classifications for the latest **14 calendar days in Asia/Phnom_Penh**. Groups show completed paper positions, realized P&L, win rate, average, profit factor where defined, and aggregated exit reasons (take profit, stop loss, pre-settlement exit, official settlement, other). No market slug, position ID, user ID, token ID or individual trade is disclosed. The public landing page displays this breakdown; Telegram daily paper messages include the 5m and 15m totals. This is paper-only analysis, not a claim of live profits.
 
-These figures are hypothetical and sensitive to fee/slippage assumptions. Data quality warnings flag mismatched recorded closes and small sample sizes. The public API includes **no per-trade details**; /admin, /api/state, /api/export.csv and raw market archives remain Basic Auth protected. Keep DASHBOARD_PASSWORD set in Railway. See [methodology](docs/V0_5_PERFORMANCE.md).
+**Risk note:** The observed 2026-11-18 Dashboard snapshot had 4 paper closes, -$38.26 realized P&L, 25% win rate and PF 0.02. This is too small a sample to conclude a stable edge. The daily $30 entry cutoff is not a guaranteed maximum loss; expiry or unavailable bids may cause overshoot. Do not enable real orders or increase notional based on early results.
 
+## Seven / fourteen day performance study (v0.5.0)
 
-## v0.6.0 — 5m/15m market comparison and exit diagnosis
+The passwordless aggregate dashboard at `/` now shows 7-day realized P&L, 14-day average net result per closed paper transaction, a profit factor where defined, and an explicit local-calendar-day table (Asia/Phnom_Penh). The same read-only aggregates are added as `analytics` in `/api/performance`. Daily Telegram paper summaries now include 7/14-day results. **No new trading permissions, execution endpoints, or real orders were added.**
 
-The public, passwordless `/api/performance` response adds `market_windows`: 14-day aggregates for 5m, 15m and unknown markets. Each aggregate includes completed paper-trade count, wins, realized simulated net P&L, average net per trade, Profit Factor when defined, and reason counts (take profit, stop loss, close before expiry, Gamma settlement, other). Unresolved holdings and future-dated records are excluded. Market IDs, token IDs and individual trade records are **not** published; aggregate performance is public to anyone with the URL.
+Only `CLOSED` and `SETTLED` positions with actual exit timestamps enter these calculations. Open inventory, unresolved settlement, future-dated closes and zero sample counts never fabricate realized profits. Profit factor is `null` when there is no measured gross loss (undefined), and average net result and win rate are `null` for empty samples. All figures depend on configured fee/slippage assumptions; realized **paper** profit is not actual transferable cash.
 
-The existing Telegram daily summary additionally reports the 5m and 15m breakdown. No real trade execution is enabled. See `docs/V0_6_MARKET_COMPARISON.md`.
+Aggregates expose no trade IDs, token IDs, or market identifiers. `/admin`, `/api/state`, `/api/export.csv`, and raw archives remain protected by `DASHBOARD_PASSWORD`. If ledger aggregate close count disagrees with the recorded completed positions, the public page warns about incomplete history instead of asserting trustworthy statistical results.
 
-A 2026-11-18 observed sample of four paper closes showed -$38.26 net result and PF 0.02. Four trades are far too few to establish statistical significance; the nominal $30 daily loss cutoff is a **pre-entry gate**, not a guaranteed limit on loss after market expiry or missing bids.
+For evidence quality, fewer than 30 closed trades in 14 days is marked insufficient, 30–99 preliminary, 100+ a research sample (still not predictive or proof of future profits). Read [performance methodology](docs/V0_5_PERFORMANCE.md).
 
-## Passwordless read-only performance summary (v0.4.2)
-
-The root `/` and `/performance` now show only aggregate **paper-trading** metrics without a password. The read-only endpoint `/api/performance` exposes equity, realized paper P&L, return, win rate, drawdown, and position counts, but **not** individual trade IDs, market IDs, token IDs, or raw archives. Anyone with the public domain can read these aggregate metrics.
-
-The detailed dashboard moved to `/admin`, and `/api/state`, `/api/export.csv`, `/api/feeds`, and raw archives remain protected by the existing `DASHBOARD_PASSWORD`. Keep that Railway secret set; **do not remove it** to make the public summary work. `/health` remains unauthenticated.
-
-The UI refreshes every 15 seconds and warns when live BTC spot feed is stale. Reports are hypothetical, not investable or withdrawable profits. All real trading is disabled.
 
 
 **Status: locally tested, paper-only. No real orders, no wallets, no validated live-market profitability.** The project extends v0.2.0: 30-second BTC spot momentum, 60-second up/down semivariance, 5/15-minute Polymarket market discovery, conservative taker paper execution, official Gamma result reconciliation, date-aware taker fees, and authenticated RWD monitoring. v0.3.0 adds public CLOB WebSocket ingestion, *optional* authenticated PolyBolt Chainlink 60s TWAP capture, independent disagreement interlock, passive maker-queue research and crash-aware persistence.

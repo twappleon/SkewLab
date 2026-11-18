@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/twappleon/SkewLab/internal/analytics"
- "github.com/twappleon/SkewLab/internal/fees"
+	"github.com/twappleon/SkewLab/internal/fees"
 	"github.com/twappleon/SkewLab/internal/maker"
 	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
@@ -169,7 +169,14 @@ func (a *App) cycle(ctx context.Context) {
 		}
 	}
 	a.mu.Lock()
-	if !a.demo { for _,p:=range a.ledger.Positions {if p.Status=="OPEN" && !now.Before(p.MarketEnd) {a.alerts.Publish("pending:"+p.ID,fmt.Sprintf("🧪 SkewLab 待結算\n市場：%s\n方向：%s\n等待官方結果，不預估收益。",p.Market,p.Side))}}}
+	// Mark imminent expiries before Evaluate transitions them to PENDING_RESOLUTION.
+	if !a.demo {
+		for _, position := range a.ledger.Positions {
+			if position.Status == "OPEN" && !now.Before(position.MarketEnd) {
+				a.alerts.Publish("pending:"+position.ID, fmt.Sprintf("🧪 SkewLab 待結算\n市場：%s\n方向：%s\n尚未取得官方結果，不預估收益。", position.Market, position.Side))
+			}
+		}
+	}
 	// Use the completion time, not request start time, for freshness checks.
 	now = time.Now().UTC()
 	if t.Price > 0 {
@@ -205,7 +212,7 @@ func (a *App) cycle(ctx context.Context) {
 				}
 				for _, action := range actions {
 					a.events = append([]string{now.Format(time.RFC3339) + " " + action}, a.events...)
-					a.alertPaperAction(now,action)
+					a.alertPaperAction(now, action)
 				}
 			} else {
 				if a.persistError == "" && a.oracleConflict == "" {
@@ -233,8 +240,10 @@ func (a *App) cycle(ctx context.Context) {
 		errors = append(errors, a.oracleConflict)
 	}
 	a.errorMessage = strings.Join(errors, "; ")
-	a.alertHealth(now,errors)
-	if a.persistError!=""{a.alerts.Publish("risk:disk:"+now.Format("2006-01-02"),"🚨 SkewLab 模擬交易已停止：持久化資料錯誤。")}
+	a.alertHealth(now, errors)
+	if a.persistError != "" {
+		a.alerts.Publish("risk:disk:"+now.Format("2006-01-02"), "🚨 SkewLab 模擬交易已停止：持久化資料錯誤，須人工排除。")
+	}
 	a.alertRisk(now)
 	a.alertDailySummary(now)
 	if t.Price > 0 {
@@ -247,81 +256,126 @@ func (a *App) cycle(ctx context.Context) {
 	}
 }
 
-// Significant-only Telegram notifications. Never notify on each market tick.
-func (a *App) alertDirection(now time.Time){
- if a.demo||a.alerts==nil{return}
- direction:=a.sig.Direction
- if direction=="WAIT"{a.lastSignalDirection="WAIT";return}
- if !a.sig.Ready||direction==a.lastSignalDirection||now.Sub(a.lastSignalAt)<5*time.Minute{return}
- a.lastSignalDirection=direction;a.lastSignalAt=now
- a.alerts.Publish("signal:"+now.Truncate(5*time.Minute).Format(time.RFC3339)+":"+direction,
- fmt.Sprintf("📊 SkewLab BTC 方向觀察訊號\n方向：%s\n30秒動量：%+.4f%%\n半方差偏度：%+.3f\n來源：%s\n僅供模擬研究，並非已成交。",direction,a.sig.MomentumPct,a.sig.Skew,a.lastBTC.Source))
+// Telegram only delivers significant transitions, never tick-by-tick price data.
+func (a *App) alertDirection(now time.Time) {
+	if a.demo || a.alerts == nil {
+		return
+	}
+	direction := a.sig.Direction
+	if direction == "WAIT" {
+		a.lastSignalDirection = "WAIT"
+		return
+	}
+	if !a.sig.Ready || (direction == a.lastSignalDirection) || now.Sub(a.lastSignalAt) < 5*time.Minute {
+		return
+	}
+	a.lastSignalDirection = direction
+	a.lastSignalAt = now
+	bucket := now.Truncate(5 * time.Minute).Format(time.RFC3339)
+	a.alerts.Publish("signal:"+bucket+":"+direction, fmt.Sprintf("📊 SkewLab BTC 方向觀察訊號\n方向：%s\n30秒動量：%+.4f%%\n半方差偏度：%+.3f\n來源：%s\n僅供模擬研究，並非已成交。", direction, a.sig.MomentumPct, a.sig.Skew, a.lastBTC.Source))
 }
-func (a *App) alertPaperAction(now time.Time, action string){
- if a.demo||a.alerts==nil{return}
- for i:=len(a.ledger.Positions)-1;i>=0;i--{
-  p:=a.ledger.Positions[i]
-  if strings.HasPrefix(action,"PAPER BUY")&&p.Status=="OPEN"&&p.EntryTime.Equal(now){
-   a.alerts.Publish("buy:"+p.ID,fmt.Sprintf("🧪 SkewLab 模擬開倉\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬買價：%.4f\n非真實下單。",p.Market,p.Side,p.EntryCost,p.EntryPrice));return
-  }
-  if strings.HasPrefix(action,"PAPER SELL")&&p.Status=="CLOSED"&&p.ExitTime!=nil&&p.ExitTime.Equal(now){
-   title:="🧪 SkewLab 模擬平倉"
-   if p.Note=="net take profit"{title="✅ SkewLab 模擬止盈（淨收益達標）"}
-   if p.Note=="net stop loss"{title="🛑 SkewLab 模擬止損"}
-   a.alerts.Publish("sell:"+p.ID,fmt.Sprintf("%s\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬賣價：%.4f\n淨損益：%+.2f USD（%+.2f%%）\n原因：%s\n非真實下單。",title,p.Market,p.Side,p.EntryCost,p.ExitPrice,p.RealizedPnL,100*p.RealizedPnL/p.EntryCost,p.Note));return
-  }
- }
+func (a *App) alertPaperAction(now time.Time, action string) {
+	if a.demo || a.alerts == nil {
+		return
+	}
+	for i := len(a.ledger.Positions) - 1; i >= 0; i-- {
+		p := a.ledger.Positions[i]
+		if strings.HasPrefix(action, "PAPER BUY") && p.Status == "OPEN" && p.EntryTime.Equal(now) {
+			a.alerts.Publish("buy:"+p.ID, fmt.Sprintf("🧪 SkewLab 模擬開倉\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬買價：%.4f\n非真實下單。", p.Market, p.Side, p.EntryCost, p.EntryPrice))
+			return
+		}
+		if strings.HasPrefix(action, "PAPER SELL") && p.Status == "CLOSED" && p.ExitTime != nil && p.ExitTime.Equal(now) {
+			headline := "🧪 SkewLab 模擬平倉"
+			if p.Note == "net take profit" {
+				headline = "✅ SkewLab 模擬止盈（淨收益已達目標）"
+			}
+			if p.Note == "net stop loss" {
+				headline = "🛑 SkewLab 模擬止損"
+			}
+			a.alerts.Publish("sell:"+p.ID, fmt.Sprintf("%s\n市場：%s\n方向：%s\n成本：%.2f USD\n模擬賣價：%.4f\n淨損益：%+.2f USD（%+.2f%%）\n原因：%s\n非真實下單。", headline, p.Market, p.Side, p.EntryCost, p.ExitPrice, p.RealizedPnL, 100*p.RealizedPnL/p.EntryCost, p.Note))
+			return
+		}
+	}
 }
-func (a *App) alertHealth(now time.Time, errors []string){
- if a.demo||a.alerts==nil{return}
- if len(errors)>0{
-  if a.feedBadSince.IsZero(){a.feedBadSince=now}
-  if !a.feedDegraded&&now.Sub(a.feedBadSince)>=time.Minute{
-   a.feedDegraded=true
-   a.alerts.Publish("outage:"+now.Truncate(20*time.Minute).Format(time.RFC3339),"⚠️ SkewLab 行情異常超過 60 秒\n缺失行情不會觸發新模擬倉。請查看 Railway 日誌。")
-  }
-  return
- }
- a.feedBadSince=time.Time{}
- if a.feedDegraded{
-  a.feedDegraded=false
-  a.alerts.Publish("recovery:"+now.Truncate(20*time.Minute).Format(time.RFC3339),"✅ SkewLab 行情資料已恢復。模擬運行持續，非實盤交易。")
- }
+func (a *App) alertHealth(now time.Time, errors []string) {
+	if a.demo || a.alerts == nil {
+		return
+	}
+	if len(errors) > 0 {
+		if a.feedBadSince.IsZero() {
+			a.feedBadSince = now
+		}
+		if !a.feedDegraded && now.Sub(a.feedBadSince) >= time.Minute {
+			a.feedDegraded = true
+			a.alerts.Publish("outage:"+now.Truncate(20*time.Minute).Format(time.RFC3339), "⚠️ SkewLab 行情連線異常超過 60 秒\n暫停依缺失行情開新模擬倉。請查看健康狀態與 Railway 日誌。")
+		}
+		return
+	}
+	a.feedBadSince = time.Time{}
+	if a.feedDegraded {
+		a.feedDegraded = false
+		a.alerts.Publish("recovery:"+now.Truncate(20*time.Minute).Format(time.RFC3339), "✅ SkewLab 行情資料已恢復。模擬運行持續，非實盤交易。")
+	}
 }
-func (a *App) alertRisk(now time.Time){
- if a.demo||a.alerts==nil{return}
- if a.oracleConflict!=""{a.alerts.Publish("risk:oracle:"+now.Format("2006-01-02"),"🚨 SkewLab 結算來源衝突：停止新模擬開倉，請查核 Chainlink/Gamma。")}
- pnl:=0.0
- for _,p:=range a.ledger.Positions{
-  if p.ExitTime!=nil&&p.ExitTime.UTC().Format("2006-01-02")==now.UTC().Format("2006-01-02"){pnl+=p.RealizedPnL}
-  if (p.Status=="OPEN"||p.Status=="PENDING_RESOLUTION")&&p.MarkPnL<0{pnl+=p.MarkPnL}
- }
- if pnl<=-a.ledger.Config.MaxDailyLossUSD{
-  a.alerts.Publish("risk:loss:"+now.UTC().Format("2006-01-02"),fmt.Sprintf("🚨 SkewLab 模擬每日虧損觸及限制\n估算損益：%.2f USD\n限制：%.2f USD\n風控限制新開倉。",pnl,a.ledger.Config.MaxDailyLossUSD))
- }
+func (a *App) alertRisk(now time.Time) {
+	if a.demo || a.alerts == nil {
+		return
+	}
+	if a.oracleConflict != "" {
+		a.alerts.Publish("risk:oracle:"+now.Format("2006-01-02"), "🚨 SkewLab 甲骨文結果衝突：已停止模擬新開倉，請檢查 Chainlink 與 Gamma 對帳。")
+	}
+	pnl := 0.0
+	for _, p := range a.ledger.Positions {
+		if p.ExitTime != nil && p.ExitTime.UTC().Format("2006-01-02") == now.UTC().Format("2006-01-02") {
+			pnl += p.RealizedPnL
+		}
+		if p.Status == "OPEN" || p.Status == "PENDING_RESOLUTION" {
+			if p.MarkPnL < 0 {
+				pnl += p.MarkPnL
+			}
+		}
+	}
+	if pnl <= -a.ledger.Config.MaxDailyLossUSD {
+		a.alerts.Publish("risk:loss:"+now.UTC().Format("2006-01-02"), fmt.Sprintf("🚨 SkewLab 模擬每日虧損觸及限制\n估算當日損益：%.2f USD\n限制：%.2f USD\n模擬新開倉已由風控限制。", pnl, a.ledger.Config.MaxDailyLossUSD))
+	}
 }
 func (a *App) alertDailySummary(now time.Time) {
- if a.demo || a.alerts == nil {return}
- local := now.In(time.FixedZone("Phnom Penh", 7*3600))
- if local.Hour() < 9 {return}
- day:=local.Format("2006-01-02")
- stats:=analytics.Calculate(a.ledger,now)
- pf:="不適用（沒有虧損樣本）"
- if stats.Last14Days.ProfitFactor!=nil{pf=fmt.Sprintf("%.2f",*stats.Last14Days.ProfitFactor)}
- avg:="不適用"
- if stats.Last14Days.AverageNetUSD!=nil{avg=fmt.Sprintf("%+.4f USD",*stats.Last14Days.AverageNetUSD)}
- quality:="樣本不足，仍需驗證"
- if !stats.DataComplete{quality="歷史交易資料不完整，需查核"}else if stats.SampleLevel=="research_sample"{quality="研究樣本，仍需樣本外驗證"}
- msg:=fmt.Sprintf("📋 SkewLab 每日模擬報告（%s 柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現淨損益：%+.2f USD\n完成平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n近 7 天已實現損益：%+.2f USD（%d 筆）\n近 14 天平均每筆：%s\n近 14 天 Profit Factor：%s\n樣本狀態：%s\n未完成持倉：%d\n僅模擬，非可提領收益。",
- day,a.ledger.CurrentEquity(),a.ledger.RealizedPnL,a.ledger.TotalClosed,a.ledger.Wins,a.ledger.MaxDrawdownPct,
- stats.Last7Days.NetPnLUSD,stats.Last7Days.Closed,avg,pf,quality,a.ledger.OpenPositions())
-
- for _, group := range analytics.CompareMarkets(a.ledger, now) {
-  if group.Market == "other" { continue }
-  msg += fmt.Sprintf("\n%s 市場（14日）：%d 筆，淨損益 %+.2f USD，止盈 %d、止損 %d、官方結算 %d",
-    group.Market, group.Period.Closed, group.Period.NetPnLUSD, group.Exits.TakeProfit, group.Exits.StopLoss, group.Exits.Settled)
- }
- a.alerts.Publish("daily:"+day,msg)
+	if a.demo || a.alerts == nil {
+		return
+	}
+	local := now.In(time.FixedZone("Phnom Penh", 7*3600))
+	if local.Hour() < 9 {
+		return
+	}
+	day := local.Format("2006-01-02")
+	stats := analytics.Calculate(a.ledger, now)
+	pf := "不適用（沒有虧損樣本）"
+	if stats.Last14Days.ProfitFactor != nil {
+		pf = fmt.Sprintf("%.2f", *stats.Last14Days.ProfitFactor)
+	}
+	average := "不適用"
+	if stats.Last14Days.AverageNetUSD != nil {
+		average = fmt.Sprintf("%+.4f USD", *stats.Last14Days.AverageNetUSD)
+	}
+	evidence := "樣本不足，仍需驗證"
+	if !stats.DataComplete {
+		evidence = "歷史交易資料不完整，需查核"
+	} else if stats.SampleLevel == "research_sample" {
+		evidence = "研究樣本，仍需樣本外驗證"
+	}
+	msg := fmt.Sprintf("📋 SkewLab 每日模擬報告（%s，柬埔寨時間）\n模擬淨值：%.2f USD\n累計已實現淨損益：%+.2f USD\n完成平倉：%d，獲勝：%d\n最大回撤：%.2f%%\n近 7 天已實現損益：%+.2f USD（%d 筆）\n近 14 天平均每筆：%s\n近 14 天 Profit Factor：%s\n樣本狀態：%s\n未完成持倉：%d\n僅模擬，非可提領收益。",
+		day, a.ledger.CurrentEquity(), a.ledger.RealizedPnL, a.ledger.TotalClosed, a.ledger.Wins, a.ledger.MaxDrawdownPct,
+		stats.Last7Days.NetPnLUSD, stats.Last7Days.Closed, average, pf, evidence, a.ledger.OpenPositions())
+	for _, group := range analytics.CompareMarkets(a.ledger, now) {
+		if group.Market == "other" {
+			continue
+		}
+		msg += fmt.Sprintf("\n%s 市場（14日）：%d 筆，淨損益 %+.2f USD，止盈 %d、止損 %d、官方結算 %d",
+			group.Market, group.Period.Closed, group.Period.NetPnLUSD, group.Exits.TakeProfit, group.Exits.StopLoss, group.Exits.Settled)
+	}
+	causes := analytics.SummarizeCauses(a.ledger, now)
+	msg += fmt.Sprintf("\n14日止損超過設定5%%幅度：%d 筆，超出金額 %.2f USD；成本分解 %d/%d 筆可計算（僅模型估算，非真實滑價）。", causes.StopThresholdBreaches, causes.ExcessStopLossUSD, causes.AnalyzedTrades, causes.CompletedTrades)
+	a.alerts.Publish("daily:"+day, msg)
 }
 
 // Captured Chainlink values are stored separately from exchange spot ticks.
@@ -441,7 +495,11 @@ func (a *App) reconcile(ctx context.Context, now time.Time) {
 			if len(a.events) > 16 {
 				a.events = a.events[:16]
 			}
-			for _,p:=range a.ledger.Positions {if p.Status=="SETTLED"&&p.ExitTime!=nil&&p.ExitTime.Equal(now)&&p.Market==slug {a.alerts.Publish("settled:"+p.ID,fmt.Sprintf("🧪 SkewLab 官方結果結算\n市場：%s\n方向：%s\n結果：%s\n模擬淨損益：%+.2f USD\nGamma 公開結果，非獨立 Chainlink 驗證。",slug,p.Side,settlement.Winner,p.RealizedPnL))}}
+			for _, p := range a.ledger.Positions {
+				if p.Status == "SETTLED" && p.ExitTime != nil && p.ExitTime.Equal(now) && p.Market == slug {
+					a.alerts.Publish("settled:"+p.ID, fmt.Sprintf("🧪 SkewLab 官方結果結算\n市場：%s\n持倉：%s\n官方結果：%s\n模擬淨損益：%+.2f USD\n注意：Gamma 結算，非獨立 Chainlink 驗證。", slug, p.Side, settlement.Winner, p.RealizedPnL))
+				}
+			}
 			a.ledger.RecordEquity(now)
 			a.saveLedger()
 		}
@@ -479,7 +537,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 		MakerQueue          []maker.QueueStudy  `json:"maker_queue_studies"`
 		MakerCandidateCount uint64              `json:"maker_candidate_count"`
 		Telegram            notify.Status       `json:"telegram_notifications"`
-	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(),a.alerts.Status()})
+	}{mode(a.demo), "0.4.0", a.lastBTC, a.sig, ordered, a.makerQuotes, fees.CryptoCoefficient(time.Now().UTC()), "Gamma-published outcome, not independent Chainlink", a.ledger, a.errorMessage, a.events, a.ledger.LastEvaluation, a.clob.GetStatus(), a.chainlink.Status(), a.queue.Snapshot(), a.queue.Candidates(), a.alerts.Status()})
 }
 func mode(demo bool) string {
 	if demo {
@@ -504,67 +562,91 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		_ = c.Write(row)
 	}
 }
-// publicPerformance exposes only read-only aggregate paper metrics.
-// Full positions, market identifiers, orderbooks and trading archives remain private.
+
+// publicPerformance serves a deliberately limited, read-only paper trading
+// summary. It never exposes positions, token IDs, orderbooks, raw observation
+// archives, strategy details, credentials or the internal event log.
 func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
-    a.mu.RLock()
-    defer a.mu.RUnlock()
-    w.Header().Set("Content-Type", "application/json; charset=utf-8")
-    w.Header().Set("Cache-Control", "no-store")
-    w.Header().Set("X-Content-Type-Options", "nosniff")
-    l := a.ledger
-    equity := l.CurrentEquity()
-    initial := l.Config.StartingCash
-    roi := 0.0
-    if initial > 0 { roi = 100*(equity-initial)/initial }
-    winRate := 0.0
-    if l.TotalClosed > 0 { winRate = 100*float64(l.Wins)/float64(l.TotalClosed) }
-    now := time.Now().UTC()
-    pending := 0
-    for _, p := range l.Positions {
-        if p.Status == "PENDING_RESOLUTION" { pending++ }
-    }
-    fresh := a.lastBTC.Price > 0 && !a.lastBTC.Time.IsZero() && now.Sub(a.lastBTC.Time) >= 0 && now.Sub(a.lastBTC.Time) <= 15*time.Second
-    _ = json.NewEncoder(w).Encode(struct {
-        Mode string `json:"mode"`
-        Version string `json:"version"`
-        AsOf time.Time `json:"as_of"`
-        LastMarketTick time.Time `json:"last_market_tick,omitempty"`
-        FeedFresh bool `json:"feed_fresh"`
-        InitialCash float64 `json:"initial_cash_usd"`
-        Equity float64 `json:"equity_usd"`
-        ReturnPct float64 `json:"return_pct"`
-        RealizedPnL float64 `json:"realized_pnl_usd"`
-        ClosedTrades int `json:"closed_trades"`
-        Wins int `json:"wins"`
-        WinRatePct float64 `json:"win_rate_pct"`
-        MaxDrawdownPct float64 `json:"max_drawdown_pct"`
-        OpenPositions int `json:"open_positions"`
-        PendingSettlement int `json:"pending_settlement"`
- Analytics analytics.Summary `json:"analytics"`
- MarketWindows []analytics.MarketWindow `json:"market_windows"`
-    }{mode(a.demo),"0.6.0",now,a.lastBTC.Time,fresh,
-      initial,equity,roi,l.RealizedPnL,l.TotalClosed,l.Wins,
-      winRate,l.MaxDrawdownPct,l.OpenPositions(),pending,analytics.Calculate(l,now),analytics.CompareMarkets(l,now)})
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	l := a.ledger
+	equity := l.CurrentEquity()
+	initial := l.Config.StartingCash
+	roi := 0.0
+	if initial > 0 {
+		roi = 100 * (equity - initial) / initial
+	}
+	winRate := 0.0
+	if l.TotalClosed > 0 {
+		winRate = 100 * float64(l.Wins) / float64(l.TotalClosed)
+	}
+	now := time.Now().UTC()
+	pending := 0
+	for _, p := range l.Positions {
+		if p.Status == "PENDING_RESOLUTION" {
+			pending++
+		}
+	}
+	fresh := a.lastBTC.Price > 0 && !a.lastBTC.Time.IsZero() && now.Sub(a.lastBTC.Time) >= 0 && now.Sub(a.lastBTC.Time) <= 15*time.Second
+	_ = json.NewEncoder(w).Encode(struct {
+		Mode              string                     `json:"mode"`
+		Version           string                     `json:"version"`
+		AsOf              time.Time                  `json:"as_of"`
+		LastMarketTick    time.Time                  `json:"last_market_tick,omitempty"`
+		FeedFresh         bool                       `json:"feed_fresh"`
+		InitialCash       float64                    `json:"initial_cash_usd"`
+		Equity            float64                    `json:"equity_usd"`
+		ReturnPct         float64                    `json:"return_pct"`
+		RealizedPnL       float64                    `json:"realized_pnl_usd"`
+		ClosedTrades      int                        `json:"closed_trades"`
+		Wins              int                        `json:"wins"`
+		WinRatePct        float64                    `json:"win_rate_pct"`
+		MaxDrawdownPct    float64                    `json:"max_drawdown_pct"`
+		OpenPositions     int                        `json:"open_positions"`
+		PendingSettlement int                        `json:"pending_settlement"`
+		Analytics         analytics.Summary          `json:"analytics"`
+		MarketWindows     []analytics.MarketWindow   `json:"market_windows"`
+		RootCauses        analytics.RootCauseSummary `json:"root_causes"`
+	}{
+		mode(a.demo), "0.7.0", now, a.lastBTC.Time, fresh,
+		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
+		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
+	})
 }
 
 func (a *App) handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path != "/" && r.URL.Path != "/performance" && r.URL.Path != "/admin" {
-            http.NotFound(w,r)
-            return
-        }
-        w.Header().Set("Content-Type","text/html; charset=utf-8")
-        w.Header().Set("Cache-Control","no-store")
-        w.Header().Set("X-Content-Type-Options","nosniff")
-        filename := "performance.html"
-        if r.URL.Path == "/admin" { filename = "dashboard.html" }
-        data,err := dashboard.ReadFile(filename)
-        if err != nil { http.Error(w,"page unavailable",http.StatusInternalServerError); return }
-        _,_ = w.Write(data)
-    })
-    mux.HandleFunc("/api/performance",a.publicPerformance)
+		if r.URL.Path != "/" && r.URL.Path != "/performance" && r.URL.Path != "/admin" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		filename := "performance.html"
+		if r.URL.Path == "/admin" {
+			filename = "dashboard.html"
+		}
+		data, err := dashboard.ReadFile(filename)
+		if err != nil {
+			http.Error(w, "page unavailable", http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(data)
+	})
+	mux.HandleFunc("/api/performance", a.publicPerformance)
+	mux.HandleFunc("/api/diagnostics", func(w http.ResponseWriter, r *http.Request) {
+		a.mu.RLock()
+		defer a.mu.RUnlock()
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_ = json.NewEncoder(w).Encode(map[string]any{"paper_only": true, "source": "modeled ledger, not real trades", "trades": analytics.PrivateDiagnostics(a.ledger, time.Now().UTC(), 100)})
+	})
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true,"execution":"paper_only"}`))
@@ -587,7 +669,7 @@ func (a *App) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		password := os.Getenv("DASHBOARD_PASSWORD")
 		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance"
-        if !public && password != "" {
+		if !public && password != "" {
 			user := os.Getenv("DASHBOARD_USER")
 			if user == "" {
 				user = "admin"
@@ -648,10 +730,14 @@ func main() {
 	}
 	poll := 3 * time.Second
 	a := NewApp(*dataDir, *demo, envFloat("MIN_MOMENTUM_PCT", 0.02), envFloat("MIN_SKEW", 0.20), poll)
-	if !*demo {a.alerts=notify.FromEnv(*dataDir)}
+	if !*demo {
+		a.alerts = notify.FromEnv(*dataDir)
+	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if a.alerts!=nil {go a.alerts.Run(ctx)}
+	if a.alerts != nil {
+		go a.alerts.Run(ctx)
+	}
 	if !*demo {
 		go a.clob.Run(ctx)
 		go a.chainlink.Run(ctx)
@@ -677,7 +763,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v0.6.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v0.7.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()
