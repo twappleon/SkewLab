@@ -711,7 +711,7 @@ func (a *App) handler() http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		password := os.Getenv("DASHBOARD_PASSWORD")
-		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review" || r.URL.Path == "/api/replay-review"
+		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review" || r.URL.Path == "/api/replay-review" || r.URL.Path == "/polymarket" || r.URL.Path == "/api/polymarket"
 		if !public && password != "" {
 			user := os.Getenv("DASHBOARD_USER")
 			if user == "" {
