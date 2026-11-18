@@ -32,7 +32,7 @@ func TestCoveragePublicAggregatePrivateEvidenceAndPause(t *testing.T){
     var out map[string]any
     if err:=json.Unmarshal(pub.Body.Bytes(),&out);err!=nil{t.Fatal(err)}
     q,ok:=out["comparison_quality"].(map[string]any)
-    if !ok||out["version"]!="1.2.0"||q["trading_authorized"]!=false||out["paper_entries_enabled"]!=false{t.Fatalf("quality gate missing: %+v",out)}
+    if !ok||out["version"]!="1.3.0"||q["trading_authorized"]!=false||out["paper_entries_enabled"]!=false{t.Fatalf("quality gate missing: %+v",out)}
     windows,ok:=q["windows"].([]any)
     if !ok||len(windows)!=2||windows[0].(map[string]any)["captured"]!=float64(1){t.Fatalf("invalid coverage: %+v",q)}
     private:=httptest.NewRecorder()

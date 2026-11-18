@@ -60,6 +60,12 @@ table{border-collapse:collapse;width:100%;min-width:540px}th,td{padding:11px 14p
 <div class="tablewrap"><table><thead><tr><th>市場</th><th>策略</th><th>前瞻結果</th><th>假設出手</th><th>勝率</th><th>淨收益／份</th><th>研究狀態</th></tr></thead>
 <tbody id="comparisonForwardRows"><tr><td colspan="7">尚無足夠前瞻資料</td></tr></tbody></table></div>
 <div class="foot"><small>結算品質分母只算到期超過 30 分鐘的樣本；缺口未必代表行情 API 故障。假設持有到結算的研究收益不代表原本提前止盈止損的真實可實現績效。此頁永不自動授權模擬或真實開倉。</small></div>
+
+<h2 class="subhead">v1.3 影子策略：成本感知驗證（不開倉）</h2>
+<div class="foot"><strong>研究狀態</strong><div id="shadow-summary">等待已結算樣本…</div>
+<small>每個市場期限／方向／價格組須有至少 100 筆事前已公布的官方結果。只有 Wilson 95% 勝率下界扣費後預估 ROI ≥2%，且價差與深度合格，才記為影子候選。影子候選不是模擬成交。</small></div>
+<div class="tablewrap"><table><thead><tr><th>市場</th><th>策略</th><th>候選</th><th>已結算候選</th><th>影子淨收益</th><th>同期市場基準</th><th>每次差額</th></tr></thead><tbody id="shadow-rows"><tr><td colspan="7">尚無足夠資料</td></tr></tbody></table></div>
+<div class="foot"><strong>資料限制</strong><div class="small" id="shadow-caveat">假設持有至到期，不能代表實際撮合或舊版提前止損。</div></div>
 </main><script>
 const $=x=>document.getElementById(x);
 const money=x=>Number.isFinite(x)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(x):'—';
@@ -184,6 +190,23 @@ function renderComparisonQuality(data){
  if(!forward.children.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='尚無前瞻樣本';tr.appendChild(td);forward.appendChild(tr)}
 }
 
-async function load(){try{const r=await fetch('/api/performance',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const ev=d.edge_research||{};const q=d.edge_quality||{};if($('qualityHealth')){$('qualityHealth').textContent='狀態：'+(q.status||'UNKNOWN')+' · 近14天候選 '+(q.captured_last_14_days??0)+' · 已結算 '+(q.resolved??0)+' · 逾期未結算 '+(q.overdue??0)+' · 最大同群樣本 '+(q.largest_resolved_cohort??0)+' / '+(q.required_per_cohort??100)+'。';}if($('qualityGroups')){$('qualityGroups').textContent=(q.groups||[]).map(g=>g.window+': '+g.captured+'筆候選 / '+g.resolved+'已結算 / '+g.overdue+'逾期').join(' · ');} if($('edgeEvidence')){$('edgeEvidence').textContent='研究候選 '+(ev.total||0)+'；已標記官方結果 '+(ev.resolved||0)+'；待結果 '+(ev.pending||0)+'。'+(ev.last_error?' 研究記錄異常，請看服務日誌。':' 新模擬開倉仍暫停。');}paint('equity',d.equity_usd,money);paint('pnl',d.realized_pnl_usd,money);paint('return',d.return_pct,pct);$('wins').textContent=d.closed_trades+' / '+(d.closed_trades?d.win_rate_pct.toFixed(1)+'%':'—');$('drawdown').textContent=(d.max_drawdown_pct||0).toFixed(2)+'%';$('positions').textContent=d.open_positions+' / '+d.pending_settlement;performance(d);renderMarkets(d);renderCauses(d);renderComparison(d);renderComparisonQuality(d);$('status').textContent=d.mode==='SYNTHETIC DEMO'?'注意：合成資料示範':d.feed_fresh?'行情最近 15 秒內有更新':'行情可能延遲或尚未取得，勿憑此頁推論交易狀態';$('updated').textContent='統計時間：'+new Date(d.as_of).toLocaleString('zh-TW')+' · 最近行情：'+(d.last_market_tick&&d.last_market_tick!=='0001-01-01T00:00:00Z'?new Date(d.last_market_tick).toLocaleString('zh-TW'):'尚未取得');}catch(e){$('status').textContent='讀取失敗：'+e.message+'。稍後會自動重新嘗試。'}}
+function renderShadow(d){
+ const s=d.shadow_study||{},summary=document.getElementById('shadow-summary'),rows=document.getElementById('shadow-rows'),caveat=document.getElementById('shadow-caveat');
+ if(!summary||!rows||!caveat)return;
+ summary.textContent='狀態：'+(s.status||'UNKNOWN')+' · 先有 '+(s.required_prior_per_cohort??100)+' 筆已發布同組結果，之後另外檢驗 '+(s.required_forward_per_window??30)+' 筆。新開倉維持暫停。';
+ rows.replaceChildren();
+ const names={momentum_only:'純動量',momentum_semivariance:'動量＋半方差',market_price_baseline:'市場價格方向'};
+ for(const w of s.windows||[]){for(const x of w.rules||[]){
+ const vals=[w.window,names[x.name]||x.name,x.eligible_candidates??0,x.resolved_candidates??0,
+ (x.resolved_candidates??0)>0?money(x.shadow_net_per_share_usd):'—',
+ (x.resolved_candidates??0)>0?money(x.baseline_net_per_share_usd):'—',
+ Number.isFinite(x.mean_excess_usd)?money(x.mean_excess_usd):'—'];
+ const tr=document.createElement('tr');for(const v of vals){const td=document.createElement('td');td.textContent=String(v);tr.appendChild(td)}rows.appendChild(tr);
+ }}
+ if(!rows.children.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='尚無樣本';tr.appendChild(td);rows.appendChild(tr)}
+ caveat.textContent=s.limitations||'研究用途，非交易許可';
+}
+
+async function load(){try{const r=await fetch('/api/performance',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const ev=d.edge_research||{};const q=d.edge_quality||{};if($('qualityHealth')){$('qualityHealth').textContent='狀態：'+(q.status||'UNKNOWN')+' · 近14天候選 '+(q.captured_last_14_days??0)+' · 已結算 '+(q.resolved??0)+' · 逾期未結算 '+(q.overdue??0)+' · 最大同群樣本 '+(q.largest_resolved_cohort??0)+' / '+(q.required_per_cohort??100)+'。';}if($('qualityGroups')){$('qualityGroups').textContent=(q.groups||[]).map(g=>g.window+': '+g.captured+'筆候選 / '+g.resolved+'已結算 / '+g.overdue+'逾期').join(' · ');} if($('edgeEvidence')){$('edgeEvidence').textContent='研究候選 '+(ev.total||0)+'；已標記官方結果 '+(ev.resolved||0)+'；待結果 '+(ev.pending||0)+'。'+(ev.last_error?' 研究記錄異常，請看服務日誌。':' 新模擬開倉仍暫停。');}paint('equity',d.equity_usd,money);paint('pnl',d.realized_pnl_usd,money);paint('return',d.return_pct,pct);$('wins').textContent=d.closed_trades+' / '+(d.closed_trades?d.win_rate_pct.toFixed(1)+'%':'—');$('drawdown').textContent=(d.max_drawdown_pct||0).toFixed(2)+'%';$('positions').textContent=d.open_positions+' / '+d.pending_settlement;performance(d);renderMarkets(d);renderCauses(d);renderComparison(d);renderComparisonQuality(d);renderShadow(d);$('status').textContent=d.mode==='SYNTHETIC DEMO'?'注意：合成資料示範':d.feed_fresh?'行情最近 15 秒內有更新':'行情可能延遲或尚未取得，勿憑此頁推論交易狀態';$('updated').textContent='統計時間：'+new Date(d.as_of).toLocaleString('zh-TW')+' · 最近行情：'+(d.last_market_tick&&d.last_market_tick!=='0001-01-01T00:00:00Z'?new Date(d.last_market_tick).toLocaleString('zh-TW'):'尚未取得');}catch(e){$('status').textContent='讀取失敗：'+e.message+'。稍後會自動重新嘗試。'}}
 load();setInterval(load,15000)
 </script></body></html>

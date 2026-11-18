@@ -1,3 +1,7 @@
+# SkewLab v1.3.0 — Cost-aware prospective shadow strategies (paper entries paused)
+
+This release adds a read-only time-causal shadow proposal and matched market baseline comparison, with published-prior cohort labels, Wilson 95% lower bound, modeled cost, liquidity and spread gates. Public `/api/performance` returns aggregate `shadow_study`; no new trading permission, portfolio reset or real orders. Requires 100 earlier same-cohort outcomes and 30 subsequent prospective results for research review only. Full caveats in [docs/V1_3_SHADOW_GATE.md](docs/V1_3_SHADOW_GATE.md).
+
 # SkewLab v1.0.0 — Research quality diagnostics
 
 ## v1.2.0 — Fixed-time coverage and forward-only quality gate
