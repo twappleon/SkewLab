@@ -1,3 +1,9 @@
+# SkewLab v1.6.0 — Observed-quote replay, safe pause remains
+
+**New:** An offline and on-demand read-only replay compares original +1%/-5% exit settings against an exploratory +1%/-10% alternative on the SAME timestamped historical order-book snapshots. Neither rule changes the bot. Missing bid depth, stale data and absent pre-entry quotes never create hypothetical profits. This is not proof of fillability or a profitable strategy, and the original four losing trades are preserved.
+
+See [the v1.6.0 replay protocol](docs/V1_6_OBSERVATION_REPLAY.md). Run locally with `go run ./cmd/replay-audit --ledger ./data/paper-ledger.json --glob './data/observations.jsonl*'`. The **public** on-demand `GET /api/replay-review` returns aggregates only; private raw archives, trades and CSV stay authenticated. Paper entries remain paused and live orders are unavailable.
+
 # SkewLab v1.5.0 — Five-round performance repair (paper entries PAUSED)
 
 The five implemented rounds: (1) round-trip friction and break-even hurdles, (2) full-stake daily risk reservation, (3) forward-only incremental alpha versus the contemporaneous market-price baseline, (4) UTC-day concentration, (5) fail-closed summary blockers. No sample result authorizes trading. See [v1.5 research and safety protocol](docs/V1_5_FIVE_ROUND_PERFORMANCE.md). The original loss ledger and Telegram setup remain intact.

@@ -29,6 +29,7 @@ import (
 	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
 	"github.com/twappleon/SkewLab/internal/paper"
+	"github.com/twappleon/SkewLab/internal/replay"
 	"github.com/twappleon/SkewLab/internal/polymarket"
 	"github.com/twappleon/SkewLab/internal/storage"
 	"github.com/twappleon/SkewLab/internal/strategy"
@@ -47,6 +48,9 @@ type Observation struct {
 }
 type App struct {
 	mu                  sync.RWMutex
+	replayMu sync.Mutex
+	replayCachedAt time.Time
+	replayCached replay.Review
 	api                 *polymarket.Client
 	clob                *stream.Feed
 	chainlink           *oracle.PolyBolt
@@ -641,7 +645,7 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 		PaperEntriesEnabled bool `json:"paper_entries_enabled"`
 		EntryPauseReason string `json:"entry_pause_reason,omitempty"`
 	}{
-		mode(a.demo), "1.5.0", now, a.lastBTC.Time, fresh,
+		mode(a.demo), "1.6.0", now, a.lastBTC.Time, fresh,
 		initial, equity, roi, l.RealizedPnL, l.TotalClosed, l.Wins,
 		winRate, l.MaxDrawdownPct, l.OpenPositions(), pending, a.edge.Status(), a.edge.AssessQuality(now), analytics.Calculate(l, now), analytics.CompareMarkets(l, now), analytics.SummarizeCauses(l, now),
 		a.comparison.Summary(now), a.comparison.Quality(now), experiment.EvaluateShadow(a.comparison.Snapshot(), now), a.demo || paperEntriesEnabled(), func() string {
@@ -674,6 +678,7 @@ func (a *App) handler() http.Handler {
 	})
 	mux.HandleFunc("/api/performance", a.publicPerformance)
 	mux.HandleFunc("/api/study-review", a.studyReviewPublic)
+	mux.HandleFunc("/api/replay-review", a.replayReviewPublic)
 	mux.HandleFunc("/api/edge-research",a.edgeResearchPrivate)
 	mux.HandleFunc("/api/strategy-comparison",a.comparisonPrivate)
 	mux.HandleFunc("/api/diagnostics", func(w http.ResponseWriter, r *http.Request) {
@@ -705,7 +710,7 @@ func (a *App) handler() http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		password := os.Getenv("DASHBOARD_PASSWORD")
-		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review"
+		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review" || r.URL.Path == "/api/replay-review"
 		if !public && password != "" {
 			user := os.Getenv("DASHBOARD_USER")
 			if user == "" {
@@ -805,7 +810,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Polymarket Skew Bot v1.5.0 (%s), http://%s", mode(*demo), listenAddr)
+	log.Printf("Polymarket Skew Bot v1.6.0 (%s), http://%s", mode(*demo), listenAddr)
 	srv := &http.Server{Addr: listenAddr, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()

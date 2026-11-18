@@ -48,4 +48,5 @@ jobs:
           go build -o "$RUNNER_TEMP/skewlab-oracle-audit" ./cmd/oracle-audit
           go build -o "$RUNNER_TEMP/skewlab-feedcheck" ./cmd/feedcheck
           go build -o "$RUNNER_TEMP/skewlab-coverage" ./cmd/coverage
+          go build -o "$RUNNER_TEMP/skewlab-replay-audit" ./cmd/replay-audit
           go build -o "$RUNNER_TEMP/skewlab-edgecheck" ./cmd/edgecheck
