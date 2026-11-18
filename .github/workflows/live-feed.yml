@@ -8,6 +8,7 @@ on:
     paths:
       - 'cmd/feedcheck/**'
       - 'internal/stream/**'
+      - 'internal/polymarket/btc.go'
       - '.github/workflows/live-feed.yml'
   workflow_dispatch:
 
@@ -37,14 +38,8 @@ jobs:
         run: |
           set -euo pipefail
           go run ./cmd/feedcheck --timeout 45s --output "$RUNNER_TEMP/skewlab-feedcheck.json"
-      - name: Upload diagnostics even if public providers are unreachable
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: skewlab-feedcheck-${{ github.run_id }}
-          path: ${{ runner.temp }}/skewlab-feedcheck.json
-          if-no-files-found: warn
-          retention-days: 14
+      # JSON is already printed in the public-data step logs. Do not upload
+      # artifacts while GitHub Actions storage quota is exhausted.
       - name: Fail honestly if live API handshake or books were not confirmed
         if: steps.probe.outcome == 'failure'
         run: exit 1

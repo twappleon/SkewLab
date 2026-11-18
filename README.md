@@ -4,7 +4,7 @@
 
 ## New in v0.4.0: first live-market evidence, safely
 
-- Standalone `go run ./cmd/feedcheck --timeout 45s` tests real public BTC/Gamma/CLOB REST and **CLOB WebSocket** freshness without a wallet or orders. The command returns failure unless a real Up+Down market pair is observed. A separate Mac GitHub Actions job produces downloadable diagnostic JSON artifacts; no fabricated live successes.
+- Standalone `go run ./cmd/feedcheck --timeout 45s` tests real public BTC/Gamma/CLOB REST and **CLOB WebSocket** freshness without a wallet or orders. The command returns failure unless a real Up+Down market pair is observed. A separate Mac GitHub Actions job prints structured JSON diagnostics in the Actions job log (Artifact storage quota is currently exhausted); no fabricated live successes. Binance/Coinbase can be regionally inaccessible; after first successful fallback the engine sticks to Kraken or Bitstamp spot until a venue failure, and clears momentum history on source changes.
 - Local Dashboard now binds to `127.0.0.1:8080` by default, protecting paper trading records from unintended LAN access. A non-loopback listener requires authenticated access and HTTPS reverse proxy termination (`TRUSTED_REVERSE_PROXY=1` or Railway). `BIND_ADDR` can override deliberately.
 - Optional Mac user launchd service at `scripts/install-paper-agent-macos.sh` runs the real-public-data **paper-only** bot on `127.0.0.1:8181` and persists to `~/Library/Application Support/SkewLab-paper/data` when explicitly installed on the owner's Mac. Does not modify existing OmniGaming runner.
 

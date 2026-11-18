@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,9 +42,11 @@ type Market struct {
 }
 
 type Client struct {
-	HTTP  *http.Client
-	Gamma string
-	CLOB  string
+	HTTP          *http.Client
+	Gamma         string
+	CLOB          string
+	spotMu        sync.Mutex
+	spotPreferred int
 }
 
 func New() *Client {

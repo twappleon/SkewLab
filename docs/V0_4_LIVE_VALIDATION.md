@@ -2,8 +2,8 @@
 
 ## What this revision does
 
-- Adds independent, strictly **read-only** `cmd/feedcheck`: verify current BTC spot, discover 5m/15m BTC Gamma markets, obtain fresh CLOB REST books, then subscribe to CLOB market WebSocket and demand a valid **Up + Down** fresh pair. A partial success is never labeled full success. A JSON report includes errors and elapsed time, never wallet credentials. Success means connectivity **at one instant**, not strategy profitability.
-- Adds a separate live-feed GitHub Actions job on **the existing SkewLab Mac self-hosted runner**. It runs on feedcheck changes or manually; artifacts contain the read-only JSON diagnostic report. Unit-test CI is separate so network outages cannot masquerade as code test regressions.
+- Adds independent, strictly **read-only** `cmd/feedcheck`: verify current BTC spot, discover 5m/15m BTC Gamma markets, obtain fresh CLOB REST books, then subscribe to CLOB market WebSocket and demand a valid **Up + Down** fresh pair. A partial success is never labeled full success. A JSON report includes errors and elapsed time, never wallet credentials. Success means connectivity **at one instant**, not strategy profitability. BTC spot has sticky fallback providers (Binance, Coinbase, Kraken and Bitstamp), and source changes always clear the prior momentum window.
+- Adds a separate live-feed GitHub Actions job on **the existing SkewLab Mac self-hosted runner**. It runs on feedcheck changes or manually; the job log contains the read-only JSON diagnostic report because current GitHub Artifact storage is exhausted. Unit-test CI is separate so network outages cannot masquerade as code test regressions.
 - Hardens the dashboard: `BIND_ADDR` defaults to `127.0.0.1` on Mac, never all interfaces. Non-loopback serving is refused without both a password and a trusted HTTPS reverse proxy (Railway has HTTPS termination). Does not touch OmniGaming.
 - Adds an optional `launchd` per-user service installer to collect **real market observations and paper trades only** for 7–14 days locally on Mac with a persistent private data directory. This installer is opt-in; pushing the code to GitHub does not start it automatically. Chainlink PolyBolt remains unavailable without separately authorized credentials.
 
@@ -16,7 +16,7 @@ go run ./cmd/feedcheck --timeout 45s --output ./data/feedcheck.json
 
 The command exits non-zero if BTC spot, at least one real Gamma market, fresh CLOB REST books or real WebSocket Up/Down snapshots fail. It never places trades, accesses wallets, signs anything or claims an unverified Chainlink price.
 
-Latest Actions: https://github.com/twappleon/SkewLab/actions — select `Read-only Polymarket live-feed verification` and inspect its JSON artifact. A Mac runner must be online. A green unit CI alone does not prove live connectivity.
+Latest Actions: https://github.com/twappleon/SkewLab/actions — select `Read-only Polymarket live-feed verification` and inspect its JSON output in the job log. A Mac runner must be online. A green unit CI alone does not prove live connectivity.
 
 ## Opt-in 7–14-day forward paper trial on Mac
 
