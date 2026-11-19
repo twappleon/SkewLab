@@ -138,7 +138,7 @@ research report. Missing witness bytes always produce NO_VALID_POST_ENTRY_BOOK_E
 No public market IDs, actual order fills or profit claims are generated.
 Mac CI run 44483609962 passed on commit 08b4cb85c3f72e3d8f95aea45cb527aab1b033e9; Railway reported SUCCESS with the persistent Volume retained.
 
-## Pending release qualification: rounds 081–090
+## Completed rounds 081–090 (Mac CI verified)
 
 Ten actual source/test commits add fixed 90–120-second paired Up/Down snapshot
 validation, normalized midpoint probability proxy, abstaining market baseline,
@@ -146,4 +146,27 @@ momentum-only and momentum+skew rules, net modeled one-share settlement payoff,
 identical-sample three-rule comparison, publication-time as-of audit,
 prospective/daily-diversity manual gate, and offline aggregate CLI integration.
 Do not use selected-side legacy observations as a genuine two-sided baseline.
-This batch is counted only after owner Mac CI and Railway pass.
+Mac CI run 44483997938 passed for commit 733deb840d0d459b203ec750b25674e2a2b7e206 and Railway reported SUCCESS.
+
+## Release candidate: rounds 091–100 (CI verification required)
+
+091. Bounded archive item capacity and refusal on oversized research.
+092. Strict offline JSON decode, unknown fields and trailing payload rejection.
+093. Private-file regular-file and restrictive permission checks.
+094. Canonical SHA-256 dataset fingerprint (NOT authenticating source).
+095. Sensitive-field name scan on aggregate reports.
+096. Private identifier field-name scan on nested public aggregate JSON.
+097. TLS-only unauthenticated GET health/private endpoint probes.
+098. Strict dataset fingerprint match verification and mismatch failure.
+099. Explicit release blockers; fail-closed no-data and no future leakage.
+100. Strict read-only CLI integration, release assurance and regression tests.
+
+This release requires GitHub Mac self-hosted go test -race ./..., go vet ./...,
+application compilation and live Railway deployment verification; only then
+may progress be called 100/100. Do NOT count a test without CI as accepted.
+
+Environment: twappleon/SkewLab feature branch, Railway skewlab-paper with
+1 GB mounted persistent volume. The BTC legacy paper ledger and separate
+Polymarket $100 scanner remain unchanged; both are NO_TRADE / safety paused.
+The 100 audited rounds represent engineering verification, NOT profitable
+strategy performance, observed wins, or real fills. Never enable real orders.

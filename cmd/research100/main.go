@@ -36,6 +36,7 @@ type Output struct {
 	Risk              *research100.RiskDecision `json:"conservative_100_usd_risk,omitempty"`
 	Comparison        *experiment.Summary       `json:"fixed_time_comparison,omitempty"`
 	PairedResearch *research100.PairedResearchReview `json:"paired_research,omitempty"`
+	ReleaseAssurance *research100.ReleaseAssurance `json:"release_assurance,omitempty"`
 	Warning           string                    `json:"warning"`
 }
 
@@ -46,13 +47,10 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 	}
 	switch kind {
 	case "audit":
-		var records []research100.Observation
-		if e := json.Unmarshal(raw, &records); e != nil {
-			return out, fmt.Errorf("invalid observation archive: %w", e)
-		}
-		d, e := research100.BuildDataset(records)
+		// Round 100: fail closed on unknown observation fields and trailing JSON.
+		d,e := research100.DecodeStrictObservations(raw)
 		if e != nil {
-			return out, e
+			return out, fmt.Errorf("invalid observation archive: %w", e)
 		}
 		c := research100.ScoreCalibration(d, asOf)
 		w := research100.RunWalkForward(d, asOf)
@@ -72,6 +70,8 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 		out.ForwardResearch = &forward
 		costResearch := research100.ReviewCostResearch(d, asOf)
 		out.CostResearch = &costResearch
+		assurance := research100.ReviewReleaseAssurance(d,asOf)
+		out.ReleaseAssurance=&assurance
 		exitReview := research100.ReviewExitEvidence(d, nil, asOf)
 		out.ExitResearch = &exitReview
 		out.LabelLag = research100.AssessLabelLag(d, asOf)
@@ -152,6 +152,12 @@ func main() {
 	if e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
+	}
+	// Report must contain aggregates, never secret-shaped keys or market IDs.
+	encoded,e:=json.Marshal(r)
+	if e!=nil{fmt.Fprintln(os.Stderr,"unable to encode research report");os.Exit(1)}
+	if e=research100.CheckPublicAggregateFields(encoded);e!=nil{
+		fmt.Fprintln(os.Stderr,"research report rejected by privacy gate:",e);os.Exit(1)
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
