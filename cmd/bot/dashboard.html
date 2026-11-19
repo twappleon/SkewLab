@@ -36,4 +36,16 @@ const ws=data.orderbook_feed||{},cl=data.chainlink_feed||{},qs=data.maker_queue_
 const positions=(l.positions||[]).slice(-15).reverse();set('poscount',(l.positions||[]).filter(p=>p.status!=='CLOSED'&&p.status!=='SETTLED').length+' 个未结仓位');by('positions').innerHTML=positions.length?positions.map(p=>'<tr><td class="mono">'+escapeHTML(p.market)+'</td><td><span class="tag '+(p.side==='DOWN'?'down':'')+'">'+escapeHTML(p.side)+'</span></td><td>'+escapeHTML(p.status)+'</td><td class="mono">'+fmt(p.entry_price,4)+'</td><td class="mono">$'+fmt(p.entry_cost)+'</td><td class="mono '+(((p.status==='CLOSED'||p.status==='SETTLED')?p.realized_pnl:p.mark_pnl)>=0?'green':'red')+'">'+money((p.status==='CLOSED'||p.status==='SETTLED')?p.realized_pnl:p.mark_pnl)+'</td></tr>').join(''):'<tr><td colspan="6"><div class="empty">目前没有模拟成交。数据不足或风控过滤时不会交易。</div></td></tr>';by('events').innerHTML=(data.events||[]).length?data.events.map(e=>'<div class="event">'+escapeHTML(e)+'</div>').join(''):'<div class="event">等待满足全部入场条件…</div>'}
 async function refresh(){try{const res=await fetch('/api/state',{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);render(await res.json())}catch(e){by('conn').innerHTML='<span class="dot off"></span>无法连接';by('warning').classList.remove('hidden');by('warning').textContent='监控接口无法访问：'+e.message}}
 refresh();setInterval(refresh,3000);
+</script><section style="max-width:1310px;margin:12px auto;padding:0 30px 24px" aria-label="QuantSkew V2 read-only preview"><div style="padding:18px;border:1px solid #253046;border-radius:13px;background:#111724"><strong>QuantSkew V2 — READ-ONLY PREVIEW</strong><p class="small">100 USDC paper capital · 2 USDC maximum position · 2 USDC daily worst-case reservation. This preview is not the running paper strategy and executes no orders.</p><div id="quantv2-preview" class="small" aria-live="polite">Checking V2 candidate quality…</div></div></section>
+<script>
+async function refreshQuantV2(){
+ const el=document.getElementById("quantv2-preview");if(!el)return;
+ try{
+  const r=await fetch("/api/quantv2",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+  const d=await r.json();const candidates=Array.isArray(d.candidates)?d.candidates:[];
+  const ready=candidates.filter(x=>x.direction==="UP"||x.direction==="DOWN");
+  el.textContent="Paper-only candidates: "+ready.length+" / "+candidates.length+" markets. "+(ready.length?"Candidate signal detected; NOT an executed trade.":"No eligible candidate; no position assumed.")+" Last checked: "+new Date(d.as_of).toLocaleTimeString();
+ }catch(e){el.textContent="V2 status unavailable: "+e.message}
+}
+refreshQuantV2();setInterval(refreshQuantV2,15000);
 </script></body></html>
