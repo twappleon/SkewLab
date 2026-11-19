@@ -66,7 +66,7 @@ Mac CI run `44480874444` passed race tests, vet, and build on the owner runner.
 
 The feature branch currently hosts a separate US$100 Polymarket scanner.
 Never replace it with main, merge existing portfolios, expose protected raw
-archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 041–100 after the next 10-round CI gate.
+archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 051–100 after the next 10-round CI gate.
 
 ## Completed rounds 021–030 (Mac CI verified)
 
@@ -81,11 +81,24 @@ order is created. GitHub Mac CI run `44481364383` passed on commit
 `65539cf91580d58480a4bea60df0382b05b6051b`; Railway deployment
 reported SUCCESS and a running replica.
 
-## Pending release qualification: rounds 031–040
+## Completed rounds 031–040 (Mac CI verified)
 
 10 independent code/test rounds introduce bid+ask depth floors, hypothetical
 liquidation capacity, top-book depth imbalance, ask-price bucket distribution,
 malformed raw quote rejection, same-book model friction, joint age/spread flags,
 5m/15m temporal overlap, layered quote filters, and read-only CLI integration.
-None of these simulate a real fill or authorize trading. This batch counts
-only after owner Mac CI and Railway deployment on its final Git commit.
+None of these simulate a real fill or authorize trading. Mac CI run 44481856140 passed on commit
+83ccc5811ba19d2d643ff318eff20e35714ddec4, and the Railway deployment
+reached SUCCESS with one running replica.
+
+## Pending release qualification: rounds 041–050
+
+Ten independent code+test rounds introduce 5m/15m quote-proxy Brier/log-loss,
+price reliability bins, explicit probability clipping, a constant 50% Brier
+baseline, per-window/side Wilson intervals, same-observation paired Brier,
+price-bound sensitivity, chronological score drift, conservative calibration
+gates, and offline CLI review integration. This is in-sample research using
+selected side observations, NOT a calibrated or executable trade model.
+
+CI on the final Git ancestor and a healthy Railway deployment are required
+before counting these rounds as completed. No trading entry flag change.
