@@ -1,5 +1,9 @@
 # SkewLab: 100 new autonomous, evidence-based development rounds
 
+## Current execution status (authoritative progress ledger)
+
+**100/100 independently committed, CI-verified research rounds completed** as of 2026-11-19. Always read and update [the execution progress table](SKEWLAB_100_ROUND_PROGRESS.md) at the END of every actual run, before responding to the user. The table update itself does not count as a new round. Past "pending/remaining" headings below are historical checkpoints; do not start round 101 under this completed plan. Preserve trading pause and existing ledgers.
+
 Scope: `twappleon/SkewLab`, Railway `k-signal-paper-lab` service `skewlab-paper`.
 This is an **incremental** plan; a round counts ONLY if its own substantive
 implementation and test have landed in a Git commit, the relevant tests pass,

@@ -41,3 +41,7 @@ Report precisely which gates pass, which are blocked, and link the exact tested 
 - Never ask to paste tokens into chat or commit them to Git. Runtime secrets are `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` / `TELEGRAM_OWNER_ID`.
 - Only send real event notifications; no synthetic, every-tick or startup messages. Throttle signal and outage alerts. Distinguish simulated positions and Gamma settlement from real fills/independent oracle proof.
 - Keep alert delivery non-blocking to trading. Log sanitized failures, persist delivery IDs and do not count alerts as profitable trades. CI must use mock Telegram endpoints only.
+
+## SkewLab execution progress ledger (binding)
+
+For any SkewLab 100-round development/run/update task, read and update `docs/SKEWLAB_100_ROUND_PROGRESS.md` at the end of the run. Append the run's outcome, before/after count, evidence (GitHub commit and CI, Railway when relevant), blockers and next action; echo the table summary and link in the user reply. A documentation-only commit is never an additional round. The 001–100 finite plan is already completed; do not relabel unrelated work as 101. No automatic trading, no ledger reset, no credentials disclosure. If the report write fails, say so clearly.
