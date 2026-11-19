@@ -148,7 +148,7 @@ prospective/daily-diversity manual gate, and offline aggregate CLI integration.
 Do not use selected-side legacy observations as a genuine two-sided baseline.
 Mac CI run 44483997938 passed for commit 733deb840d0d459b203ec750b25674e2a2b7e206 and Railway reported SUCCESS.
 
-## Release candidate: rounds 091–100 (CI verification required)
+## Completed rounds 091–100 (Mac CI and Railway verified)
 
 091. Bounded archive item capacity and refusal on oversized research.
 092. Strict offline JSON decode, unknown fields and trailing payload rejection.
@@ -161,12 +161,27 @@ Mac CI run 44483997938 passed for commit 733deb840d0d459b203ec750b25674e2a2b7e20
 099. Explicit release blockers; fail-closed no-data and no future leakage.
 100. Strict read-only CLI integration, release assurance and regression tests.
 
-This release requires GitHub Mac self-hosted go test -race ./..., go vet ./...,
-application compilation and live Railway deployment verification; only then
-may progress be called 100/100. Do NOT count a test without CI as accepted.
+Final qualification: Mac CI run 44484863402 passed all go test -race ./...,
+go vet ./..., and build checks on commit b17a15809d3cd02b435ac486c70866039b53898b.
+The first attempt (run 44484741762) failed on an unused import in the
+HTTPS probe. The import was removed in fix commit b17a1580 and CI rerun passed.
+Railway Production deployed the same commit with 1/1 healthy replicas,
+0 active warnings/criticals and public HTTPS /health HTTP 200.
+This is exactly 100 substantive source/test rounds 001–100, each landed
+as a distinct Git commit in the tested ancestry. The post-acceptance
+documentation checkpoint does not count as round 101.
 
 Environment: twappleon/SkewLab feature branch, Railway skewlab-paper with
 1 GB mounted persistent volume. The BTC legacy paper ledger and separate
 Polymarket $100 scanner remain unchanged; both are NO_TRADE / safety paused.
 The 100 audited rounds represent engineering verification, NOT profitable
 strategy performance, observed wins, or real fills. Never enable real orders.
+
+## Completion checkpoint (2026-11-19, Asia/Phnom_Penh)
+
+Status: 100/100 CODE+TEST ROUNDS VERIFIED, no further rounds in this finite
+plan. Live profitability is UNPROVEN. Original BTC ledger preserved with four
+historic simulated positions; the separate US$100 scan remains NO_TRADE. The
+study's per-share payoff and stop comparisons remain hypothetical. Keep
+PAPER_ENTRIES_ENABLED off, preserve persistent /app/data and existing Railway
+Telegram variable references, and never create a real-order route.

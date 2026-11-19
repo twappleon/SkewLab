@@ -1,3 +1,14 @@
+## SkewLab 100-round research QA completion (2026-11-19)
+
+The finite 001–100 development plan in
+[docs/SKEWLAB_100_ROUND_PLAN.md](docs/SKEWLAB_100_ROUND_PLAN.md)
+is complete: 100 distinct substantive source+test commits, Mac CI
+`44484863402` passed on code commit `b17a1580`, and Railway passed
+health checks. This work validates the read-only research infrastructure;
+it does **not** establish profitable strategies or authorize trades. The
+previous simulated BTC account losses are not erased; both the legacy paper
+entry gate and Polymarket $100 research scanner remain NO_TRADE.
+
 # SkewLab v1.6.0 — Observed-quote replay, safe pause remains
 
 **New:** An offline and on-demand read-only replay compares original +1%/-5% exit settings against an exploratory +1%/-10% alternative on the SAME timestamped historical order-book snapshots. Neither rule changes the bot. Missing bid depth, stale data and absent pre-entry quotes never create hypothetical profits. This is not proof of fillability or a profitable strategy, and the original four losing trades are preserved.
