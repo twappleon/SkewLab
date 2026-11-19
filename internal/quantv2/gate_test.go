@@ -28,3 +28,10 @@ func TestBDDNoSignalAndInvalidRiskConfiguration(t *testing.T){
  s.Direction="UP";c:=Config();c.OrderUSD=20
  if Gate(s,m,c,now).Direction!="WAIT"{t.Fatal("wrong stake must fail closed")}
 }
+
+func TestBDDFreshLiquidBookMayPassOnlyAsPaperCandidate(t *testing.T){
+ now:=time.Date(2026,11,19,3,0,0,0,time.UTC)
+ m:=polymarket.Market{Active:true,End:now.Add(3*time.Minute),Up:polymarket.Quote{Bid:.74,Ask:.74,BidDepth:100,AskDepth:100,UpdatedAt:now}}
+ s:=strategy.Result{Direction:"UP",Ready:true,MomentumPct:.04,Skew:.42}
+ if got:=Gate(s,m,Config(),now);got.Direction!="UP"{t.Fatalf("expected cost-filtered paper candidate, got %q: %s",got.Direction,got.Reason)}
+}
