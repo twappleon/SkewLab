@@ -220,6 +220,15 @@ func (a *App) cycle(ctx context.Context) {
 						log.Printf("edge candidate persistence unavailable: %v",err)
 					}
 				}
+				// V2 alert is opt-in and only describes an observed, cost-filtered
+				// opportunity; it is NOT a filled order or a realized P&L event.
+				if !a.demo && a.alerts != nil && os.Getenv("QUANTV2_TELEGRAM_ALERTS") == "1" && a.persistError == "" && a.oracleConflict == "" && t.Price > 0 && now.Sub(t.Time) <= 5*time.Second {
+					candidate := quantv2.Gate(a.sig,m,quantv2.Config(),now)
+					if candidate.Direction == "UP" || candidate.Direction == "DOWN" {
+						a.alerts.Publish("quantv2:signal:"+m.Slug+":"+candidate.Direction,
+							fmt.Sprintf("QuantSkew V2 READ-ONLY candidate\\nMarket: %s\\nSide: %s\\n30s momentum: %+.4f%%\\nSemivariance asymmetry: %+.3f\\nCapital: 100 USDC; maximum stake: 2 USDC; daily risk reservation: 2 USDC.\\nNO ORDER PLACED, NO PROFIT CLAIM.",m.Slug,candidate.Direction,candidate.MomentumPct,candidate.Skew))
+					}
+				}
 				proposal := maker.Plan(m, a.sig, now, maker.DefaultConfig())
 				a.makerQuotes = append(a.makerQuotes, proposal)
 				if !a.demo && m.Up.Source == "CLOB_WEBSOCKET" {
@@ -697,7 +706,7 @@ func (a *App) handler() http.Handler {
 		w.Header().Set("Cache-Control","no-store")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"version":quantv2.Version,"mode":"READ_ONLY_PREVIEW","paper_only":true,
-			"trading_enabled":false,"not_live_deployed":false,
+			"trading_enabled":false,
 			"risk":quantv2.Config(),"as_of":now,"candidates":candidates,
 			"warning":"Read-only gate evaluation; no V2 orders, positions or PnL. Not a validated predictive probability.",
 		})
