@@ -71,7 +71,7 @@ func AuditEntry(pos paper.Position, frames []Frame, cfg paper.Config) EntryAudit
 		}
 		q := quoteFor(m, pos.Side)
 		at := pos.EntryTime
-		if !validQuote(q, at) {
+		if !validQuote(q, at) || !validQuote(q, f.Time) {
 			return EntryAudit{Status: "STALE_OR_INVALID_ENTRY_BOOK"}
 		}
 		if q.AskDepth+1e-6 < pos.Qty || q.BidDepth+1e-6 < pos.Qty {
