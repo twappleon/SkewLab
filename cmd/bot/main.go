@@ -29,6 +29,7 @@ import (
 	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
 	"github.com/twappleon/SkewLab/internal/paper"
+	"github.com/twappleon/SkewLab/internal/quantv2"
 	"github.com/twappleon/SkewLab/internal/replay"
 	"github.com/twappleon/SkewLab/internal/polymarket"
 	"github.com/twappleon/SkewLab/internal/storage"
@@ -682,6 +683,25 @@ func (a *App) handler() http.Handler {
 	mux.HandleFunc("/api/replay-review", a.replayReviewPublic)
 	mux.HandleFunc("/api/edge-research",a.edgeResearchPrivate)
 	mux.HandleFunc("/api/strategy-comparison",a.comparisonPrivate)
+	mux.HandleFunc("/api/quantv2", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
+		a.mu.RLock()
+		now:=time.Now().UTC()
+		candidates:=make([]map[string]any,0,len(a.markets))
+		for _, m:=range a.markets {
+			v:=quantv2.Gate(a.sig,m,quantv2.Config(),now)
+			candidates=append(candidates,map[string]any{"market":m.Slug,"direction":v.Direction,"reason":v.Reason})
+		}
+		a.mu.RUnlock()
+		w.Header().Set("Content-Type","application/json; charset=utf-8")
+		w.Header().Set("Cache-Control","no-store")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"version":quantv2.Version,"mode":"READ_ONLY_PREVIEW","paper_only":true,
+			"trading_enabled":false,"not_live_deployed":false,
+			"risk":quantv2.Config(),"as_of":now,"candidates":candidates,
+			"warning":"Read-only gate evaluation; no V2 orders, positions or PnL. Not a validated predictive probability.",
+		})
+	})
 	mux.HandleFunc("/api/diagnostics", func(w http.ResponseWriter, r *http.Request) {
 		a.mu.RLock()
 		defer a.mu.RUnlock()
