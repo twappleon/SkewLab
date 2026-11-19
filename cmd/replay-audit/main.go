@@ -39,7 +39,10 @@ func run(ledgerPath, glob string) (replay.Review, error) {
 	if err != nil {
 		return replay.Review{}, err
 	}
-	return replay.BuildReview(l.Positions, l.Config, archive), nil
+	review := replay.BuildReview(l.Positions, l.Config, archive)
+	gate := replay.BuildEvidenceGate(&l, archive, review)
+	review.Evidence = &gate
+	return review, nil
 }
 func main() {
 	ledger := flag.String("ledger", "", "path to an actual private paper-ledger.json")
