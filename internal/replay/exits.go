@@ -38,7 +38,7 @@ func ReplayExit(p paper.Position, frames []Frame, cfg paper.Config, policy ExitP
 		return out
 	}
 	for _, frame := range frames {
-		if frame.Time.Before(p.EntryTime) || !frame.Time.Before(p.MarketEnd) {
+		if !frame.Time.After(p.EntryTime) || !frame.Time.Before(p.MarketEnd) {
 			continue
 		}
 		m, ok := marketFor(frame, p)
