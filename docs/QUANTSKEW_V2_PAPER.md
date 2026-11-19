@@ -21,5 +21,5 @@ QuantSkew V2 samples only recorded observations, checks fresh CLOB bid/ask and d
 
 ## Acceptance / next gates
 - Real recorded replay dataset plus independent walk-forward split not yet supplied or evaluated here.
-- Production Dashboard and Telegram integration are **not** automatically enabled by the preview; existing monitoring remains untouched.
+- Production Dashboard keeps its existing ledger untouched. The private /admin page now shows a read-only V2 candidate count, backed by the authenticated GET /api/quantv2 endpoint. Optional Telegram candidate notices use the existing authorized bot configuration only when QUANTV2_TELEGRAM_ALERTS=1 (disabled by default); each unique market/side is deduplicated by the existing delivery journal. They are labeled READ-ONLY and are not paper fills or performance claims. These changes are not deployed to the running service.
 - Must compare baseline/V2 on identical timestamped observations, check true official settlement and maker queue before any deployment approval.
