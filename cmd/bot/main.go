@@ -29,6 +29,7 @@ import (
 	"github.com/twappleon/SkewLab/internal/notify"
 	"github.com/twappleon/SkewLab/internal/oracle"
 	"github.com/twappleon/SkewLab/internal/paper"
+	"github.com/twappleon/SkewLab/internal/quantv2"
 	"github.com/twappleon/SkewLab/internal/replay"
 	"github.com/twappleon/SkewLab/internal/polymarket"
 	"github.com/twappleon/SkewLab/internal/storage"
@@ -217,6 +218,15 @@ func (a *App) cycle(ctx context.Context) {
 					if _,err := a.comparison.Capture(m,researchSignal,a.lastBTC,now);err!=nil{log.Printf("comparison candidate save failed: %v",err)}
 					if _,err := a.edge.Capture(m, researchSignal, now);err!=nil {
 						log.Printf("edge candidate persistence unavailable: %v",err)
+					}
+				}
+				// V2 alert is opt-in and only describes an observed, cost-filtered
+				// opportunity; it is NOT a filled order or a realized P&L event.
+				if !a.demo && a.alerts != nil && os.Getenv("QUANTV2_TELEGRAM_ALERTS") == "1" && a.persistError == "" && a.oracleConflict == "" && t.Price > 0 && now.Sub(t.Time) <= 5*time.Second {
+					candidate := quantv2.Gate(a.sig,m,quantv2.Config(),now)
+					if candidate.Direction == "UP" || candidate.Direction == "DOWN" {
+						a.alerts.Publish("quantv2:signal:"+m.Slug+":"+candidate.Direction,
+							fmt.Sprintf("QuantSkew V2 READ-ONLY candidate\\nMarket: %s\\nSide: %s\\n30s momentum: %+.4f%%\\nSemivariance asymmetry: %+.3f\\nCapital: 100 USDC; maximum stake: 2 USDC; daily risk reservation: 2 USDC.\\nNO ORDER PLACED, NO PROFIT CLAIM.",m.Slug,candidate.Direction,candidate.MomentumPct,candidate.Skew))
 					}
 				}
 				proposal := maker.Plan(m, a.sig, now, maker.DefaultConfig())
@@ -682,6 +692,25 @@ func (a *App) handler() http.Handler {
 	mux.HandleFunc("/api/replay-review", a.replayReviewPublic)
 	mux.HandleFunc("/api/edge-research",a.edgeResearchPrivate)
 	mux.HandleFunc("/api/strategy-comparison",a.comparisonPrivate)
+	mux.HandleFunc("/api/quantv2", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
+		a.mu.RLock()
+		now:=time.Now().UTC()
+		candidates:=make([]map[string]any,0,len(a.markets))
+		for _, m:=range a.markets {
+			v:=quantv2.Gate(a.sig,m,quantv2.Config(),now)
+			candidates=append(candidates,map[string]any{"market":m.Slug,"direction":v.Direction,"reason":v.Reason})
+		}
+		a.mu.RUnlock()
+		w.Header().Set("Content-Type","application/json; charset=utf-8")
+		w.Header().Set("Cache-Control","no-store")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"version":quantv2.Version,"mode":"READ_ONLY_PREVIEW","paper_only":true,
+			"trading_enabled":false,
+			"risk":quantv2.Config(),"as_of":now,"candidates":candidates,
+			"warning":"Read-only gate evaluation; no V2 orders, positions or PnL. Not a validated predictive probability.",
+		})
+	})
 	mux.HandleFunc("/api/diagnostics", func(w http.ResponseWriter, r *http.Request) {
 		a.mu.RLock()
 		defer a.mu.RUnlock()

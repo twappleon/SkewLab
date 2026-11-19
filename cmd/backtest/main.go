@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/twappleon/SkewLab/internal/paper"
+	"github.com/twappleon/SkewLab/internal/quantv2"
 	"github.com/twappleon/SkewLab/internal/polymarket"
 	"github.com/twappleon/SkewLab/internal/strategy"
 	"os"
@@ -21,14 +22,18 @@ type observation struct {
 
 func main() {
 	file := flag.String("file", "./data/observations.jsonl", "recorded observations, not synthetic bars")
+	mode := flag.String("strategy", "baseline", "baseline or quantv2; simulation only")
 	flag.Parse()
+	if *mode != "baseline" && *mode != "quantv2" { fmt.Fprintln(os.Stderr, "unknown replay strategy"); os.Exit(2) }
 	f, err := os.Open(*file)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	defer f.Close()
-	l := paper.New(paper.DefaultConfig())
+	cfg := paper.DefaultConfig()
+	if *mode == "quantv2" { cfg = quantv2.Config() }
+	l := paper.New(cfg)
 	var ticks []strategy.Tick
 	total := 0
 	rejected := 0
@@ -52,7 +57,9 @@ func main() {
 		s := strategy.Calculate(ticks, o.Time, 0.02, 0.2)
 		for _, m := range o.Markets {
 			if m.Active {
-				l.Evaluate(m, s, o.Time)
+				candidate := s
+				if *mode == "quantv2" { candidate = quantv2.Gate(s,m,cfg,o.Time) }
+				l.Evaluate(m, candidate, o.Time)
 			}
 		}
 		l.RecordEquity(o.Time)
@@ -66,6 +73,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "No valid observations. Collect live data first; the backtester does not invent prices.")
 		os.Exit(1)
 	}
+	fmt.Printf("Replay strategy: %s (PAPER ONLY)\\n",*mode)
 	fmt.Printf("Replay observations: %d (invalid: %d)\nStarting USD: %.2f\nPaper equity USD: %.2f\nRealized P&L USD: %.2f\nClosed trades: %d; wins: %d; open/unresolved: %d\nMax drawdown (observed): %.2f%%\n", total, rejected, l.Config.StartingCash, l.CurrentEquity(), l.RealizedPnL, l.TotalClosed, l.Wins, l.OpenPositions(), l.MaxDrawdownPct)
 	fmt.Println("CAUTION: tick-sampled order books only; no queue-position fill model; no oracle settlement; stale markets not valued. NOT live trading proof.")
 }
