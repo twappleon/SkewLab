@@ -1,5 +1,5 @@
 package research100
-import("testing";"time")
+import("math";"testing";"time")
 func TestRound045WilsonByCohortNeedsThirty(t *testing.T){
  now:=time.Date(2026,11,19,15,0,0,0,time.UTC)
  d:=Dataset{Items:[]Observation{}}
@@ -9,5 +9,5 @@ func TestRound045WilsonByCohortNeedsThirty(t *testing.T){
   d.Items=append(d.Items,o)
  }
  r:=AssessCohortUncertainty(d,now)
- if r[0].Samples!=30||r[0].WilsonLower95==nil||*r[0].WilsonLower95<=0||*r[0].WilsonUpper95!=1||r[1].WilsonLower95!=nil{t.Fatalf("interval %+v",r)}
+ if r[0].Samples!=30||r[0].WilsonLower95==nil||*r[0].WilsonLower95<=0||r[0].WilsonUpper95==nil||math.Abs(*r[0].WilsonUpper95-1)>1e-12||r[1].WilsonLower95!=nil{t.Fatalf("interval %+v",r)}
 }
