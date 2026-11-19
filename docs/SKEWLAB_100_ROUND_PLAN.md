@@ -116,14 +116,24 @@ a genuinely more confident winning quote. This is an explicit test correction,
 not a fabricated market result or change in profit. The corrected full Mac CI run 44482771167 passed on commit
 33112121b2e52f5084f61fea651bd6d1021d47b8. The prior failed run
 44482306473 is retained as diagnostic history, not represented as success.
-The code NEVER enables any paper or real trading route. Remaining: 071–100 after the cost-research batch passes CI.
+The code NEVER enables any paper or real trading route. Remaining: 081–100 after the exit-witness batch passes CI.
 
-## Pending release qualification: rounds 061–070
+## Completed rounds 061–070 (Mac CI verified)
 
 Each round contains a distinct source and test: date-aware fee transition,
 three slippage levels, three reserve assumptions, same-book round-trip
 friction, worst-case US$100 stake-at-risk, modeled stop headroom, required
 settlement win rate, one-share settlement counterfactual, hypothetical UTC
 loss-day analysis, and an explicitly non-executable cost review in the CLI.
-Never turn this cost modeling into paper/live orders. CI success is required
-before these rounds count as completed.
+Never turn this cost modeling into paper/live orders. Mac CI run 44483160891 passed for commit c50879a635de1cf755223c477f9d96e76095de80; Railway reported SUCCESS. They remain model-only research.
+
+## Pending release qualification: rounds 071–080
+
+Ten distinct source/test commits implement entry evidence checks, explicit
+post-entry bid witness validation, unique pairing without cherry-picking,
+modeled round-trip P&L, four-second take-profit checks, 5% stop triggers,
+32-second expiry proximity, same-witness 5% vs 10% threshold comparison,
+missing-evidence coverage, and an optional private --exit-witness-file CLI
+research report. Missing witness bytes always produce NO_VALID_POST_ENTRY_BOOK_EVIDENCE.
+No public market IDs, actual order fills or profit claims are generated.
+CI and Railway acceptance are required for these rounds to count.
