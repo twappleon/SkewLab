@@ -47,11 +47,11 @@ All ten rounds were tested individually with `go test ./internal/research100`
 Source: `internal/research100`, `cmd/research100`. Sample input remains
 private; the new CLI cannot read Railway's protected volume directly.
 
-## Verified development candidates: rounds 011–020 (CI gate required)
+## Completed rounds 011–020 (Mac CI verified)
 
 Round-specific source and tests are introduced as independent Git commits. The
-GitHub branch update and Mac CI are **separate acceptance gates**: do not count
-these ten as completed until Mac race/vet/build CI verifies the final ancestor.
+GitHub branch was updated at `d13ac44db65ce56cdec315ec722df89cc1c0f123` and
+Mac CI run `44480874444` passed race tests, vet, and build on the owner runner.
 
 11. Observed quote-age P95 and as-of filtering.
 12. 5m/15m capture-to-expiry horizon.
@@ -66,4 +66,16 @@ these ten as completed until Mac race/vet/build CI verifies the final ancestor.
 
 The feature branch currently hosts a separate US$100 Polymarket scanner.
 Never replace it with main, merge existing portfolios, expose protected raw
-archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 021–100.
+archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 031–100 after the next 10-round CI gate.
+
+## Pending release qualification: rounds 021–030
+
+These ten independent Go source/test changes cover published-outcome timing,
+expired market backlog, as-of outcome frontier, malformed raw settlement
+chronology, matured-market labeling denominator, contradictory outcomes,
+external claim disagreement without oracle attestation, history revision
+checks, pending age quantiles, and combined CLI read-only review.
+
+No source is presumed independently audited. No gain, loss or executable
+order is created. This batch counts only after GitHub Mac CI and Railway
+health checks on the new branch head.
