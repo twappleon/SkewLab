@@ -91,7 +91,7 @@ None of these simulate a real fill or authorize trading. Mac CI run 44481856140 
 83ccc5811ba19d2d643ff318eff20e35714ddec4, and the Railway deployment
 reached SUCCESS with one running replica.
 
-## Pending release qualification: rounds 041–050
+## Completed rounds 041–050 and 051–060 (Mac CI verified)
 
 Ten independent code+test rounds introduce 5m/15m quote-proxy Brier/log-loss,
 price reliability bins, explicit probability clipping, a constant 50% Brier
@@ -113,6 +113,17 @@ comparison, a forward-only evidence gate, and an offline CLI research report.
 The first CI attempt on rounds 041–050 failed on a mistaken Brier regression
 test expectation (run 44482306473). Round 056 corrects the test by supplying
 a genuinely more confident winning quote. This is an explicit test correction,
-not a fabricated market result or change in profit. Neither rounds 041–050 nor
-051–060 should be marked done until final Mac CI passes on the common ancestor.
-The code NEVER enables any paper or real trading route. Remaining: 061–100.
+not a fabricated market result or change in profit. The corrected full Mac CI run 44482771167 passed on commit
+33112121b2e52f5084f61fea651bd6d1021d47b8. The prior failed run
+44482306473 is retained as diagnostic history, not represented as success.
+The code NEVER enables any paper or real trading route. Remaining: 071–100 after the cost-research batch passes CI.
+
+## Pending release qualification: rounds 061–070
+
+Each round contains a distinct source and test: date-aware fee transition,
+three slippage levels, three reserve assumptions, same-book round-trip
+friction, worst-case US$100 stake-at-risk, modeled stop headroom, required
+settlement win rate, one-share settlement counterfactual, hypothetical UTC
+loss-day analysis, and an explicitly non-executable cost review in the CLI.
+Never turn this cost modeling into paper/live orders. CI success is required
+before these rounds count as completed.

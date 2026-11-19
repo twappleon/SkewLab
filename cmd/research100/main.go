@@ -27,6 +27,7 @@ type Output struct {
 	BookQuality *research100.BookReview `json:"book_quality,omitempty"`
 	ProbabilityReview *research100.CalibrationReview `json:"probability_review,omitempty"`
 	ForwardResearch *research100.ForwardResearchReview `json:"forward_research,omitempty"`
+	CostResearch *research100.CostResearchReview `json:"cost_research,omitempty"`
 	LabelLag          []research100.LabelLag `json:"label_lag,omitempty"`
 	DayDiversity      []research100.DayDiversity `json:"day_diversity,omitempty"`
 	WalkForward       *research100.WalkForward  `json:"prospective_research,omitempty"`
@@ -67,6 +68,8 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 		out.ProbabilityReview = &probability
 		forward := research100.ReviewForwardResearch(d, asOf)
 		out.ForwardResearch = &forward
+		costResearch := research100.ReviewCostResearch(d, asOf)
+		out.CostResearch = &costResearch
 		out.LabelLag = research100.AssessLabelLag(d, asOf)
 		out.DayDiversity = research100.DayConcentration(d, asOf)
 		out.Calibration = &c
