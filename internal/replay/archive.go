@@ -84,6 +84,18 @@ func readFrames(rd io.Reader, a *Archive) error {
 		if f.Time.IsZero() || f.Source == "" || !(f.BTC > 100) || math.IsNaN(f.BTC) || math.IsInf(f.BTC, 0) {
 			return fmt.Errorf("line %d: invalid frame", a.TotalLines)
 		}
+		// Multiple copies of the same market within a timestamp make the
+		// market/quote choice ambiguous. Never silently use the first one.
+		seen := make(map[string]struct{}, len(f.Markets))
+		for _, m := range f.Markets {
+			if m.Slug == "" {
+				continue
+			} // unavailable discovery is not a quote
+			if _, ok := seen[m.Slug]; ok {
+				return fmt.Errorf("line %d: duplicate market slug", a.TotalLines)
+			}
+			seen[m.Slug] = struct{}{}
+		}
 		a.Frames = append(a.Frames, f)
 	}
 	return sc.Err()
