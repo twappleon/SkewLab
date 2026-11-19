@@ -66,9 +66,9 @@ Mac CI run `44480874444` passed race tests, vet, and build on the owner runner.
 
 The feature branch currently hosts a separate US$100 Polymarket scanner.
 Never replace it with main, merge existing portfolios, expose protected raw
-archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 031–100 after the next 10-round CI gate.
+archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 041–100 after the next 10-round CI gate.
 
-## Pending release qualification: rounds 021–030
+## Completed rounds 021–030 (Mac CI verified)
 
 These ten independent Go source/test changes cover published-outcome timing,
 expired market backlog, as-of outcome frontier, malformed raw settlement
@@ -77,5 +77,15 @@ external claim disagreement without oracle attestation, history revision
 checks, pending age quantiles, and combined CLI read-only review.
 
 No source is presumed independently audited. No gain, loss or executable
-order is created. This batch counts only after GitHub Mac CI and Railway
-health checks on the new branch head.
+order is created. GitHub Mac CI run `44481364383` passed on commit
+`65539cf91580d58480a4bea60df0382b05b6051b`; Railway deployment
+reported SUCCESS and a running replica.
+
+## Pending release qualification: rounds 031–040
+
+10 independent code/test rounds introduce bid+ask depth floors, hypothetical
+liquidation capacity, top-book depth imbalance, ask-price bucket distribution,
+malformed raw quote rejection, same-book model friction, joint age/spread flags,
+5m/15m temporal overlap, layered quote filters, and read-only CLI integration.
+None of these simulate a real fill or authorize trading. This batch counts
+only after owner Mac CI and Railway deployment on its final Git commit.

@@ -24,6 +24,7 @@ type Output struct {
 	QuoteAge          *research100.QuoteAgeAudit `json:"quote_age,omitempty"`
 	CaptureQuality    *research100.CaptureGate `json:"capture_quality,omitempty"`
 	SettlementQuality *research100.SettlementReview `json:"settlement_quality,omitempty"`
+	BookQuality *research100.BookReview `json:"book_quality,omitempty"`
 	LabelLag          []research100.LabelLag `json:"label_lag,omitempty"`
 	DayDiversity      []research100.DayDiversity `json:"day_diversity,omitempty"`
 	WalkForward       *research100.WalkForward  `json:"prospective_research,omitempty"`
@@ -58,6 +59,8 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 		out.CaptureQuality = &gate
 		settlement := research100.ReviewSettlementData(d, asOf)
 		out.SettlementQuality = &settlement
+		book := research100.ReviewBookEvidence(d, asOf)
+		out.BookQuality = &book
 		out.LabelLag = research100.AssessLabelLag(d, asOf)
 		out.DayDiversity = research100.DayConcentration(d, asOf)
 		out.Calibration = &c
