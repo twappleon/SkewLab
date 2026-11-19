@@ -21,6 +21,10 @@ type Output struct {
 	AsOf              time.Time                 `json:"as_of"`
 	Status            string                    `json:"status"`
 	Calibration       *research100.Calibration  `json:"quote_proxy_calibration,omitempty"`
+	QuoteAge          *research100.QuoteAgeAudit `json:"quote_age,omitempty"`
+	CaptureQuality    *research100.CaptureGate `json:"capture_quality,omitempty"`
+	LabelLag          []research100.LabelLag `json:"label_lag,omitempty"`
+	DayDiversity      []research100.DayDiversity `json:"day_diversity,omitempty"`
 	WalkForward       *research100.WalkForward  `json:"prospective_research,omitempty"`
 	Coverage          *research100.Coverage     `json:"observed_coverage,omitempty"`
 	Risk              *research100.RiskDecision `json:"conservative_100_usd_risk,omitempty"`
@@ -47,6 +51,12 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 		w := research100.RunWalkForward(d, asOf)
 		cov := research100.AssessCoverage(d, 5*time.Minute, nil, nil)
 		risk := research100.AssessWorstCaseRisk(100, 5, 0, 0, 2)
+		qa := research100.AssessQuoteAge(d, asOf)
+		gate := research100.CheckCaptureReadiness(d, asOf)
+		out.QuoteAge = &qa
+		out.CaptureQuality = &gate
+		out.LabelLag = research100.AssessLabelLag(d, asOf)
+		out.DayDiversity = research100.DayConcentration(d, asOf)
 		out.Calibration = &c
 		out.WalkForward = &w
 		out.Coverage = &cov

@@ -46,3 +46,24 @@ All ten rounds were tested individually with `go test ./internal/research100`
 
 Source: `internal/research100`, `cmd/research100`. Sample input remains
 private; the new CLI cannot read Railway's protected volume directly.
+
+## Verified development candidates: rounds 011–020 (CI gate required)
+
+Round-specific source and tests are introduced as independent Git commits. The
+GitHub branch update and Mac CI are **separate acceptance gates**: do not count
+these ten as completed until Mac race/vet/build CI verifies the final ancestor.
+
+11. Observed quote-age P95 and as-of filtering.
+12. 5m/15m capture-to-expiry horizon.
+13. Candidate interarrival gaps without fabricated monitoring uptime.
+14. UTC day diversity / concentration warnings.
+15. Publication delay and 30-minute unresolved backlog.
+16. Bid/ask spread measurement without fill assumptions.
+17. Separate quote freshness and collector staleness by market window.
+18. As-of chronology: future captures and future outcome labels.
+19. Read-only fail-closed capture quality gate with explicit blockers.
+20. Offline CLI integration and regression test for quality reporting.
+
+The feature branch currently hosts a separate US$100 Polymarket scanner.
+Never replace it with main, merge existing portfolios, expose protected raw
+archives, or re-enable PAPER_ENTRIES_ENABLED. Remaining plan: 021–100.
