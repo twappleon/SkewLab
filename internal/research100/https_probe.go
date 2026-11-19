@@ -2,7 +2,6 @@ package research100
 
 import (
  "context"
- "errors"
  "net/http"
  "net/url"
  "strings"
