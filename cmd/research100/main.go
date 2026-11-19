@@ -35,6 +35,7 @@ type Output struct {
 	Coverage          *research100.Coverage     `json:"observed_coverage,omitempty"`
 	Risk              *research100.RiskDecision `json:"conservative_100_usd_risk,omitempty"`
 	Comparison        *experiment.Summary       `json:"fixed_time_comparison,omitempty"`
+	PairedResearch *research100.PairedResearchReview `json:"paired_research,omitempty"`
 	Warning           string                    `json:"warning"`
 }
 
@@ -93,6 +94,8 @@ func Execute(kind string, raw []byte, asOf time.Time) (Output, error) {
 		}
 		c := experiment.Compare(records, asOf)
 		out.Comparison = &c
+		paired := research100.ReviewPairedEvidence(records, asOf)
+		out.PairedResearch = &paired
 		out.Status = c.Status
 	default:
 		return out, errors.New("kind must be audit or comparison")

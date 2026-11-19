@@ -116,7 +116,7 @@ a genuinely more confident winning quote. This is an explicit test correction,
 not a fabricated market result or change in profit. The corrected full Mac CI run 44482771167 passed on commit
 33112121b2e52f5084f61fea651bd6d1021d47b8. The prior failed run
 44482306473 is retained as diagnostic history, not represented as success.
-The code NEVER enables any paper or real trading route. Remaining: 081–100 after the exit-witness batch passes CI.
+The code NEVER enables any paper or real trading route. Remaining: 091–100 after the paired comparison batch passes CI.
 
 ## Completed rounds 061–070 (Mac CI verified)
 
@@ -127,7 +127,7 @@ settlement win rate, one-share settlement counterfactual, hypothetical UTC
 loss-day analysis, and an explicitly non-executable cost review in the CLI.
 Never turn this cost modeling into paper/live orders. Mac CI run 44483160891 passed for commit c50879a635de1cf755223c477f9d96e76095de80; Railway reported SUCCESS. They remain model-only research.
 
-## Pending release qualification: rounds 071–080
+## Completed rounds 071–080 (Mac CI verified)
 
 Ten distinct source/test commits implement entry evidence checks, explicit
 post-entry bid witness validation, unique pairing without cherry-picking,
@@ -136,4 +136,14 @@ modeled round-trip P&L, four-second take-profit checks, 5% stop triggers,
 missing-evidence coverage, and an optional private --exit-witness-file CLI
 research report. Missing witness bytes always produce NO_VALID_POST_ENTRY_BOOK_EVIDENCE.
 No public market IDs, actual order fills or profit claims are generated.
-CI and Railway acceptance are required for these rounds to count.
+Mac CI run 44483609962 passed on commit 08b4cb85c3f72e3d8f95aea45cb527aab1b033e9; Railway reported SUCCESS with the persistent Volume retained.
+
+## Pending release qualification: rounds 081–090
+
+Ten actual source/test commits add fixed 90–120-second paired Up/Down snapshot
+validation, normalized midpoint probability proxy, abstaining market baseline,
+momentum-only and momentum+skew rules, net modeled one-share settlement payoff,
+identical-sample three-rule comparison, publication-time as-of audit,
+prospective/daily-diversity manual gate, and offline aggregate CLI integration.
+Do not use selected-side legacy observations as a genuine two-sided baseline.
+This batch is counted only after owner Mac CI and Railway pass.
