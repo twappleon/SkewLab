@@ -102,3 +102,17 @@ selected side observations, NOT a calibrated or executable trade model.
 
 CI on the final Git ancestor and a healthy Railway deployment are required
 before counting these rounds as completed. No trading entry flag change.
+
+## Pending release qualification: rounds 051–060
+
+10 distinct source/test commits add strict time-split train/holdout membership,
+as-of prior labels, held-out day diversity, UTC hour and weekday/weekend regime
+scores, momentum strength groupings, semivariance alignment, abstention-aware
+comparison, a forward-only evidence gate, and an offline CLI research report.
+
+The first CI attempt on rounds 041–050 failed on a mistaken Brier regression
+test expectation (run 44482306473). Round 056 corrects the test by supplying
+a genuinely more confident winning quote. This is an explicit test correction,
+not a fabricated market result or change in profit. Neither rounds 041–050 nor
+051–060 should be marked done until final Mac CI passes on the common ancestor.
+The code NEVER enables any paper or real trading route. Remaining: 061–100.
