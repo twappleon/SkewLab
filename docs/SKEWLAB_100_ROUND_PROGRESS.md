@@ -23,6 +23,7 @@
 | US$100 Polymarket 掃描 | 與舊帳本隔離；唯讀／NO_TRADE |
 | 新模擬開倉與真實下單 | **安全停用** |
 | 研究有效獲利 | **未證明** |
+| 使用者可見流程驗收 | **FAIL / 未驗收**。從早期 10 回合附近版本到目前正式版本，核心 Bot、績效首頁、掃描路由均未改變（Git Blob SHA 相同）；工程回合完成不能代表產品功能完成。見 [P0 Issue #5](https://github.com/twappleon/SkewLab/issues/5) |
 
 ## BDD 驗收（與工程完成數分開）
 
@@ -77,6 +78,16 @@
 | 2026-11-20 | 強制建立每輪 Given／When／Then、Go 測試及 BDD CI Gate；回填既有 BDD 欠項 | 工程 100/100 → 100/100 | +0 | CI 將驗證 docs/bdd/round011.feature、manifest、cmd/bdd-gate | BDD 0 VERIFIED / 1 READY_FOR_CI / 99 PENDING；不得宣稱 BDD 已完成 |
 
 | 2026-11-20 | BDD 強制關卡在 Mac CI 成功；Round 011 正式複驗；擴大涵蓋 UI／腳本／測試變更 | 工程 100/100；BDD 0/100 → 1/100 | +0 工程（+1 BDD） | [BDD Mac CI PASS 44693265939](https://github.com/twappleon/SkewLab/actions/runs/44693265939) · [程式 781b95c7](https://github.com/twappleon/SkewLab/commit/781b95c7e39f44880a33fcb70cc35d244c8de69f) | 其餘 99 回合 BDD 待補；交易繼續安全暫停 |
+
+| 2026-11-21 | 使用者回報大量開發回合後正式網站未變；比對正式核心 SHA，確定產品可用性缺口；建立 P0 修復 Issue #5 | 工程 100/100 → 100/100；BDD 1/100 → 1/100；產品驗收 FAIL | +0 | [P0 Issue #5](https://github.com/twappleon/SkewLab/issues/5) · [正式版核心來源](https://github.com/twappleon/SkewLab/tree/32e29a0a226b7896bba1949b02d2902b5c665ffd/cmd/bot) | 阻塞：網站核心流程未改善、真實 E2E 未驗收；先改可操作功能而非計算更多回合 |
+
+## 2026-11-21 使用者實際操作稽核：產品驗收 FAIL（P0）
+
+- 使用者回報前後使用流程看不出差異。核對 GitHub 早期版本 `9e5085c5ce7749bc9162c03e35c741b046439b1f` 與當前正式部署 `32e29a0a226b7896bba1949b02d2902b5c665ffd`，三個使用者實際操作核心檔案完全未變：`cmd/bot/main.go`、`cmd/bot/performance.html`、`cmd/bot/polymarket_routes.go`。
+- 研究模組 `internal/research100` 和離線 `cmd/research100` 有實作，不等於使用者能在網站操作；US$100 掃描器仍採 `NO_TRADE`，模擬已平倉筆數與模擬損益仍為固定零值。
+- 工程歷史維持 **100/100**（僅源碼與 CI），完整 BDD 仍 **1/100**，**產品 E2E／實際體驗不得標 PASS**。本次稽核環境未能直接取回公開 HTTPS 的完整頁面內容／截圖，不能宣稱真實瀏覽器驗收已完成。
+- [P0 產品驗收阻塞 Issue #5](https://github.com/twappleon/SkewLab/issues/5)：先完成至少一條真實使用者流程並通過 BDD + browser E2E + 部署對帳，再繼續宣稱可用新功能。不允許只報回合數。
+- 此次稽核記錄是 **+0 開發回合**，不新增 101，不啟用模擬或真實下單，不更改舊帳本與 Volume。
 
 ## 已知限制
 
