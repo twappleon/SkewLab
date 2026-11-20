@@ -24,6 +24,19 @@
 | 新模擬開倉與真實下單 | **安全停用** |
 | 研究有效獲利 | **未證明** |
 
+## BDD 驗收（與工程完成數分開）
+
+| BDD 指標 | 本次稽核狀態 |
+|---|---|
+| 工程已通過原始測試 | **100/100**（沿用既有驗收，不變） |
+| 已完整對照 Given／When／Then、對應測試且有**本輪** CI PASS | **0/100**（此版提交時尚待本輪 CI） |
+| 已建情境與 Go 測試對照，待本輪 BDD CI | **1/100**（Round 011） |
+| 仍缺完整 BDD 追溯／複驗 | **99/100** |
+| 每次行為變更是否必修訂 BDD | **已啟用程式碼 CI 強制檢查** |
+| BDD 100/100 最終驗收 | **未通過／BLOCKED** |
+
+完整的機器可讀清單在 [BDD Manifest](../bdd/manifest.json)（實際路徑：`docs/bdd/manifest.json`），驗收規範在 [BDD README](bdd/README.md)。
+
 ## 十階段進度表
 
 每階段包含 10 個實質源碼／測試回合；以下所列 CI 是該批完成後核對成功的正式證據，不能把文件 Commit 算作新回合。
@@ -60,6 +73,8 @@
 |---|---|---|---:|---|---|
 | 2026-11-19 | 既有 100 回合最終驗收與研究結案 | 90/100 → 100/100 | +10 | [程式 `b17a1580`](https://github.com/twappleon/SkewLab/commit/b17a15809d3cd02b435ac486c70866039b53898b) · [Mac CI PASS](https://github.com/twappleon/SkewLab/actions/runs/44484863402) · Railway SUCCESS | 既定計畫完成；獲利能力未證明 |
 | 2026-11-19 | 建立執行後必更新進度表；核對 GitHub、CI 與 Railway | 100/100 → 100/100 | +0 | [文件檢查點 `63bf5eec`](https://github.com/twappleon/SkewLab/commit/63bf5eec2fb0352070a58086b91297bfcca07933) · [Mac CI PASS](https://github.com/twappleon/SkewLab/actions/runs/44485075344) · Railway 1/1 Online | 保持完成狀態；若另建新計畫須重新命名與編號，不能當成未完成 100 回合 |
+
+| 2026-11-20 | 強制建立每輪 Given／When／Then、Go 測試及 BDD CI Gate；回填既有 BDD 欠項 | 工程 100/100 → 100/100 | +0 | CI 將驗證 docs/bdd/round011.feature、manifest、cmd/bdd-gate | BDD 0 VERIFIED / 1 READY_FOR_CI / 99 PENDING；不得宣稱 BDD 已完成 |
 
 ## 已知限制
 
