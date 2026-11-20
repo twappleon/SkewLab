@@ -4,7 +4,7 @@
 >
 > 專案：`twappleon/SkewLab` · 分支：`feat/polymarket-100-paper-scanner` · Railway：`k-signal-paper-lab/skewlab-paper`
 >
-> 最後核對：2026-11-19（Asia/Phnom_Penh）。本次更新僅為進度文件，不計入第 101 回合。
+> 最後核對：2026-11-20（Asia/Phnom_Penh）。本次更新僅為進度文件，不計入第 101 回合。
 
 ## 總覽
 
@@ -29,13 +29,13 @@
 | BDD 指標 | 本次稽核狀態 |
 |---|---|
 | 工程已通過原始測試 | **100/100**（沿用既有驗收，不變） |
-| 已完整對照 Given／When／Then、對應測試且有**本輪** CI PASS | **0/100**（此版提交時尚待本輪 CI） |
-| 已建情境與 Go 測試對照，待本輪 BDD CI | **1/100**（Round 011） |
+| 已完整對照 Given／When／Then、對應測試且有**本輪** CI PASS | **1/100**（Round 011，Mac CI [44693265939](https://github.com/twappleon/SkewLab/actions/runs/44693265939) 成功） |
+| 已建情境與 Go 測試對照，待本輪 BDD CI | **0/100** |
 | 仍缺完整 BDD 追溯／複驗 | **99/100** |
 | 每次行為變更是否必修訂 BDD | **已啟用程式碼 CI 強制檢查** |
 | BDD 100/100 最終驗收 | **未通過／BLOCKED** |
 
-完整的機器可讀清單在 [BDD Manifest](../bdd/manifest.json)（實際路徑：`docs/bdd/manifest.json`），驗收規範在 [BDD README](bdd/README.md)。
+完整的機器可讀清單在 [BDD Manifest](bdd/manifest.json)（實際路徑：`docs/bdd/manifest.json`），驗收規範在 [BDD README](bdd/README.md)。
 
 ## 十階段進度表
 
@@ -75,6 +75,8 @@
 | 2026-11-19 | 建立執行後必更新進度表；核對 GitHub、CI 與 Railway | 100/100 → 100/100 | +0 | [文件檢查點 `63bf5eec`](https://github.com/twappleon/SkewLab/commit/63bf5eec2fb0352070a58086b91297bfcca07933) · [Mac CI PASS](https://github.com/twappleon/SkewLab/actions/runs/44485075344) · Railway 1/1 Online | 保持完成狀態；若另建新計畫須重新命名與編號，不能當成未完成 100 回合 |
 
 | 2026-11-20 | 強制建立每輪 Given／When／Then、Go 測試及 BDD CI Gate；回填既有 BDD 欠項 | 工程 100/100 → 100/100 | +0 | CI 將驗證 docs/bdd/round011.feature、manifest、cmd/bdd-gate | BDD 0 VERIFIED / 1 READY_FOR_CI / 99 PENDING；不得宣稱 BDD 已完成 |
+
+| 2026-11-20 | BDD 強制關卡在 Mac CI 成功；Round 011 正式複驗；擴大涵蓋 UI／腳本／測試變更 | 工程 100/100；BDD 0/100 → 1/100 | +0 工程（+1 BDD） | [BDD Mac CI PASS 44693265939](https://github.com/twappleon/SkewLab/actions/runs/44693265939) · [程式 781b95c7](https://github.com/twappleon/SkewLab/commit/781b95c7e39f44880a33fcb70cc35d244c8de69f) | 其餘 99 回合 BDD 待補；交易繼續安全暫停 |
 
 ## 已知限制
 

@@ -25,6 +25,8 @@ type Entry struct {
 	TestFile       string `json:"test_file,omitempty"`
 	TestFunction   string `json:"test_function,omitempty"`
 	SourceFile     string `json:"source_file,omitempty"`
+ SourceFiles []string `json:"source_files,omitempty"`
+ TestFiles []string `json:"test_files,omitempty"`
 	Revision       int    `json:"revision,omitempty"`
 	RevisionReason string `json:"revision_reason,omitempty"`
 }
@@ -133,6 +135,11 @@ func parseEntry(root string, e Entry) error {
 	if _, err := os.Stat(source); err != nil {
 		return fmt.Errorf("source missing: %w", err)
 	}
+    for _,extra := range append(append([]string{}, e.SourceFiles...), e.TestFiles...){
+      full,err:=localPath(root,extra); if err!=nil{return err}
+      if !isBehavioralFile(extra){return fmt.Errorf("extra mapping is not behavior source: %s",extra)}
+      if _,err:=os.Stat(full);err!=nil{return fmt.Errorf("extra mapping missing %s: %w",extra,err)}
+    }
 	tf, err := localPath(root, e.TestFile)
 	if err != nil {
 		return err
@@ -189,49 +196,37 @@ func validate(root string, m Manifest) (Summary, error) {
 	out.BDDComplete = out.Verified == 100
 	return out, nil
 }
-func isProductionGo(path string) bool {
-	if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-		return false
-	}
-	if strings.HasPrefix(path, "cmd/bdd-gate/") {
-		return false
-	}
-	return strings.HasPrefix(path, "internal/") || strings.HasPrefix(path, "cmd/")
+// isBehavioralFile covers executable code, UI and deployment behavior, not
+// only Go. Test-only changes also need BDD scenario review.
+func isBehavioralFile(path string) bool {
+ if strings.HasPrefix(path,"cmd/bdd-gate/"){return false}
+ if path=="Dockerfile" || path=="railway.toml"{return true}
+ if !(strings.HasPrefix(path,"internal/") || strings.HasPrefix(path,"cmd/") || strings.HasPrefix(path,"web/") || strings.HasPrefix(path,"frontend/") || strings.HasPrefix(path,"scripts/") || strings.HasPrefix(path,"docker/")){return false}
+ ext:=strings.ToLower(filepath.Ext(path))
+ switch ext {case ".go",".js",".jsx",".ts",".tsx",".vue",".html",".css",".scss",".py",".sql",".sh",".dart",".gd":return true}
+ return false
 }
-
-// validateChangedCode requires all newly changed production Go files to
-// carry a matching, revised BDD scenario AND revised Go test in the push.
-// An empty code delta is allowed (docs/backfill), but cannot imply BDD PASS.
+// validateChangedCode requires a matching revised Gherkin scenario and a
+// revised Go regression test for EVERY behavior-affecting file in a push.
+// SourceFiles and TestFiles allow a single reviewed scenario to span modules.
 func validateChangedCode(m Manifest, changed []string) error {
-	names := map[string]bool{}
-	for _, c := range changed {
-		names[c] = true
-	}
-	required := []string{}
-	for _, c := range changed {
-		if isProductionGo(c) {
-			required = append(required, c)
-		}
-	}
-	if len(required) == 0 {
-		return nil
-	}
-	if !names["docs/bdd/manifest.json"] {
-		return errors.New("production code changed without updating docs/bdd/manifest.json")
-	}
-	for _, source := range required {
-		found := false
-		for _, e := range m.Rounds {
-			if (e.Status == "READY_FOR_CI" || e.Status == "VERIFIED") && e.SourceFile == source && names[e.Feature] && names[e.TestFile] {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("production code %s changed without revised Given/When/Then and corresponding Go test", source)
-		}
-	}
-	return nil
+ names:=map[string]bool{}
+ for _,c:=range changed{names[c]=true}
+ required:=[]string{}
+ for _,c:=range changed{if isBehavioralFile(c){required=append(required,c)}}
+ if len(required)==0{return nil}
+ if !names["docs/bdd/manifest.json"]{return errors.New("behavior-affecting code changed without updating docs/bdd/manifest.json")}
+ for _,source:=range required{
+  found:=false
+  for _,e:=range m.Rounds{
+   match:=e.SourceFile==source || e.TestFile==source
+   for _,x:=range e.SourceFiles{if x==source{match=true}}
+   for _,x:=range e.TestFiles{if x==source{match=true}}
+   if (e.Status=="READY_FOR_CI"||e.Status=="VERIFIED")&&match&&names[e.Feature]&&names[e.TestFile]{found=true;break}
+  }
+  if !found{return fmt.Errorf("behavior-affecting file %s changed without revised Given/When/Then and corresponding Go test",source)}
+ }
+ return nil
 }
 func changedFiles(base string) ([]string, error) {
 	if base == "" {

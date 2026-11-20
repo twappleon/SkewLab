@@ -78,3 +78,21 @@ func TestIncompleteBDDStrictModeFails(t *testing.T) {
 		t.Fatalf("strict completion must fail: %+v %v", s, e)
 	}
 }
+
+func TestDashboardAndTestOnlyChangesNeedBDD(t *testing.T){
+ _,m:=fixture(t)
+ if !isBehavioralFile("cmd/bot/performance.html") || !isBehavioralFile("scripts/check.sh") || !isBehavioralFile("internal/research100/quote_age_test.go"){t.Fatal("behavior files not covered")}
+ if isBehavioralFile("docs/bdd/round011.feature") || isBehavioralFile("cmd/bdd-gate/main.go"){t.Fatal("gate self-change falsely requires external round")}
+ if e:=validateChangedCode(m,[]string{"cmd/bot/performance.html","docs/bdd/manifest.json","docs/bdd/round011.feature","internal/research100/quote_age_test.go"});e==nil{t.Fatal("untraced HTML change permitted")}
+ if e:=validateChangedCode(m,[]string{"internal/research100/quote_age_test.go"});e==nil{t.Fatal("test-only changes require BDD revision")}
+ if e:=validateChangedCode(m,[]string{"internal/research100/quote_age_test.go","docs/bdd/manifest.json","docs/bdd/round011.feature"});e!=nil{t.Fatalf("mapped test update rejected: %v",e)}
+}
+func TestMultipleSourceFilesCanShareReviewedScenario(t *testing.T){
+ dir,m:=fixture(t)
+ if e:=os.MkdirAll(filepath.Join(dir,"cmd/bot"),0755);e!=nil{t.Fatal(e)}
+ if e:=os.WriteFile(filepath.Join(dir,"cmd/bot/performance.html"),[]byte("<html/>"),0600);e!=nil{t.Fatal(e)}
+ m.Rounds[10].SourceFiles=[]string{"cmd/bot/performance.html"}
+ if _,e:=validate(dir,m);e!=nil{t.Fatalf("extra source mapping rejected: %v",e)}
+ changed:=[]string{"cmd/bot/performance.html","docs/bdd/manifest.json","docs/bdd/round011.feature","internal/research100/quote_age_test.go"}
+ if e:=validateChangedCode(m,changed);e!=nil{t.Fatalf("multi source mapping rejected: %v",e)}
+}

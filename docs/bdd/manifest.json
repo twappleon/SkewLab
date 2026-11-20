@@ -43,7 +43,7 @@
     },
     {
       "round": 11,
-      "status": "READY_FOR_CI",
+      "status": "VERIFIED",
       "feature": "docs/bdd/round011.feature",
       "test_file": "internal/research100/quote_age_test.go",
       "test_function": "TestRound011QuoteAgeHonorsAsOf",
