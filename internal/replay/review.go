@@ -19,17 +19,18 @@ type Group struct {
 	AlternativeModeledPnLUSD   float64 `json:"alternative_modeled_pnl_usd"`
 }
 type Review struct {
-	ModelVersion        string  `json:"model_version"`
-	StudyOnly           bool    `json:"study_only"`
-	TradingAuthorized   bool    `json:"trading_authorized"`
-	Status              string  `json:"status"`
-	ArchiveFrames       int     `json:"archive_frames"`
-	ArchivedFiles       int     `json:"archived_files"`
-	Groups              []Group `json:"groups"`
-	MatchedPairs        int     `json:"matched_pairs"`
-	AllRecordedClosed   int     `json:"all_recorded_closed"`
-	MissingOrUnverified int     `json:"missing_or_unverified"`
-	Limitation          string  `json:"limitation"`
+	Evidence            *EvidenceGate `json:"evidence_gate,omitempty"`
+	ModelVersion        string        `json:"model_version"`
+	StudyOnly           bool          `json:"study_only"`
+	TradingAuthorized   bool          `json:"trading_authorized"`
+	Status              string        `json:"status"`
+	ArchiveFrames       int           `json:"archive_frames"`
+	ArchivedFiles       int           `json:"archived_files"`
+	Groups              []Group       `json:"groups"`
+	MatchedPairs        int           `json:"matched_pairs"`
+	AllRecordedClosed   int           `json:"all_recorded_closed"`
+	MissingOrUnverified int           `json:"missing_or_unverified"`
+	Limitation          string        `json:"limitation"`
 }
 
 func windowOf(market string) string {

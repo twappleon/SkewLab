@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "rounds": [
+    {
+      "round": 1,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 2,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 3,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 4,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 5,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 6,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 7,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 8,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 9,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 10,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 11,
+      "status": "VERIFIED",
+      "feature": "docs/bdd/round011.feature",
+      "test_file": "internal/research100/quote_age_test.go",
+      "test_function": "TestRound011QuoteAgeHonorsAsOf",
+      "source_file": "internal/research100/quote_age.go",
+      "revision": 1,
+      "revision_reason": "Audit existing quote-age behavior, including future-observation exclusion and no-data state; map it to the existing Go regression test."
+    },
+    {
+      "round": 12,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 13,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 14,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 15,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 16,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 17,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 18,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 19,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 20,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 21,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 22,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 23,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 24,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 25,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 26,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 27,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 28,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 29,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 30,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 31,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 32,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 33,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 34,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 35,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 36,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 37,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 38,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 39,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 40,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 41,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 42,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 43,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 44,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 45,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 46,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 47,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 48,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 49,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 50,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 51,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 52,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 53,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 54,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 55,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 56,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 57,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 58,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 59,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 60,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 61,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 62,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 63,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 64,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 65,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 66,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 67,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 68,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 69,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 70,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 71,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 72,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 73,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 74,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 75,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 76,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 77,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 78,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 79,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 80,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 81,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 82,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 83,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 84,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 85,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 86,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 87,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 88,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 89,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 90,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 91,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 92,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 93,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 94,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 95,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 96,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 97,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 98,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 99,
+      "status": "PENDING_BDD"
+    },
+    {
+      "round": 100,
+      "status": "PENDING_BDD"
+    }
+  ]
+}

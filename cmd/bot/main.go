@@ -657,6 +657,7 @@ func (a *App) publicPerformance(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handler() http.Handler {
 	mux := http.NewServeMux()
+	registerPolyRoutes(mux,polyResearchState)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" && r.URL.Path != "/performance" && r.URL.Path != "/admin" {
 			http.NotFound(w, r)
@@ -710,7 +711,7 @@ func (a *App) handler() http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		password := os.Getenv("DASHBOARD_PASSWORD")
-		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review" || r.URL.Path == "/api/replay-review"
+		public := r.URL.Path == "/health" || r.URL.Path == "/" || r.URL.Path == "/performance" || r.URL.Path == "/api/performance" || r.URL.Path == "/api/study-review" || r.URL.Path == "/api/replay-review" || r.URL.Path == "/polymarket" || r.URL.Path == "/api/polymarket"
 		if !public && password != "" {
 			user := os.Getenv("DASHBOARD_USER")
 			if user == "" {
@@ -777,6 +778,7 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if !*demo { a.startPolyResearch(ctx, polyResearchState) }
 	if a.alerts != nil {
 		go a.alerts.Run(ctx)
 	}

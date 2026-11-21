@@ -1,0 +1,32 @@
+name: Polymarket Mac runner backup QA
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/polymarket-100-paper-scanner
+    paths:
+      - "internal/polymarketv2/**"
+      - "internal/polymarketscan/**"
+      - "cmd/bot/**"
+      - ".github/workflows/polymarket-mac-ci.yml"
+permissions:
+  contents: read
+jobs:
+  mac-verify:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Go environment
+        run: |
+          go version
+          git rev-parse HEAD
+      - name: Test packages
+        run: go test ./internal/polymarketscan ./internal/polymarketv2
+      - name: Test full project
+        run: go test ./...
+      - name: Vet and build
+        run: |
+          go vet ./...
+          go build ./cmd/bot
+          go build ./cmd/polymarket-scan

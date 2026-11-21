@@ -31,7 +31,14 @@ func (a *App) replayReviewPublic(w http.ResponseWriter, r *http.Request) {
 		positions := append([]paper.Position(nil), a.ledger.Positions...)
 		cfg := a.ledger.Config
 		a.mu.RUnlock()
-		summary := replay.BuildReview(positions, cfg, replay.Archive{})
+		ledger := paper.Ledger{Positions: positions, Config: cfg}
+		a.mu.RLock()
+		ledger.Cash = a.ledger.Cash
+		ledger.RealizedPnL = a.ledger.RealizedPnL
+		ledger.TotalClosed = a.ledger.TotalClosed
+		a.mu.RUnlock()
+		archive := replay.Archive{}
+		summary := replay.BuildReview(positions, cfg, archive)
 		paths, err := filepath.Glob(filepath.Join(a.dataDir, "observations.jsonl*"))
 		if err == nil {
 			sort.Strings(paths)
@@ -59,6 +66,8 @@ func (a *App) replayReviewPublic(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			summary.Status = "OBSERVATION_ARCHIVE_UNAVAILABLE_OR_INCOMPLETE"
 		}
+		gate := replay.BuildEvidenceGate(&ledger, archive, summary)
+		summary.Evidence = &gate
 		a.replayCached = summary
 		a.replayCachedAt = time.Now()
 	}

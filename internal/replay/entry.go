@@ -37,14 +37,17 @@ func marketFor(frame Frame, pos paper.Position) (polymarket.Market, bool) {
 	}
 	return polymarket.Market{}, false
 }
+
+// validQuote rejects bad prices and depths before any replay inference.
+// A quote timestamp AFTER the observation time would leak future information.
 func validQuote(q polymarket.Quote, at time.Time) bool {
-	if !(q.Ask > 0 && q.Ask < 1 && q.Bid > 0 && q.Bid <= q.Ask && q.AskDepth > 0 && q.BidDepth > 0) && finite(q.Ask) && finite(q.Bid) {
+	if !finite(q.Bid) || !finite(q.Ask) || !finite(q.BidDepth) || !finite(q.AskDepth) {
 		return false
 	}
-	if !finite(q.Bid) || !finite(q.Ask) || !finite(q.AskDepth) || !finite(q.BidDepth) {
+	if q.Bid <= 0 || q.Bid >= 1 || q.Ask <= 0 || q.Ask >= 1 || q.Bid > q.Ask || q.BidDepth <= 0 || q.AskDepth <= 0 {
 		return false
 	}
-	if q.UpdatedAt.IsZero() || q.UpdatedAt.After(at.Add(2*time.Second)) || at.Sub(q.UpdatedAt) > 12*time.Second {
+	if at.IsZero() || q.UpdatedAt.IsZero() || q.UpdatedAt.After(at) || at.Sub(q.UpdatedAt) > 12*time.Second {
 		return false
 	}
 	return true
@@ -68,7 +71,7 @@ func AuditEntry(pos paper.Position, frames []Frame, cfg paper.Config) EntryAudit
 		}
 		q := quoteFor(m, pos.Side)
 		at := pos.EntryTime
-		if !validQuote(q, at) {
+		if !validQuote(q, at) || !validQuote(q, f.Time) {
 			return EntryAudit{Status: "STALE_OR_INVALID_ENTRY_BOOK"}
 		}
 		if q.AskDepth+1e-6 < pos.Qty || q.BidDepth+1e-6 < pos.Qty {
